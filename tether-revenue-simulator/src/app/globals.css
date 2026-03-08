@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+/* Tether Brand Design Tokens */
+:root {
+  --brand-primary: #2D1B69;
+  --brand-secondary: #E8E0F5;
+  --brand-accent: #00D4FF;
+  --brand-accent-light: #D6F7FF;
+  --brand-tether: #00C896;
+  --brand-tether-dark: #00A87E;
+  --brand-dark: #0A0B14;
+  --brand-light: #F5F3FA;
+  --brand-muted: #6E6B8A;
+  --brand-white: #FFFFFF;
+  --brand-warm: #FF6B35;
+  --brand-warm-light: #FFE8DF;
+  --brand-glass: rgba(45, 27, 105, 0.06);
+}
+
+/* Custom Tailwind theme extension via CSS */
+@theme {
+  --color-brand-primary: #2D1B69;
+  --color-brand-secondary: #E8E0F5;
+  --color-brand-accent: #00D4FF;
+  --color-brand-accent-light: #D6F7FF;
+  --color-brand-tether: #00C896;
+  --color-brand-tether-dark: #00A87E;
+  --color-brand-dark: #0A0B14;
+  --color-brand-light: #F5F3FA;
+  --color-brand-muted: #6E6B8A;
+  --color-brand-warm: #FF6B35;
+  --color-brand-warm-light: #FFE8DF;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", ui-serif, Georgia, serif;
+}
+
+/* Smooth font rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--brand-light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--brand-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-primary);
+}
