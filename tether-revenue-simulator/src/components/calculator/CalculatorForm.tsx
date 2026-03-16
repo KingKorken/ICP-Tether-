@@ -11,21 +11,21 @@ interface CalculatorFormProps {
 
 export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
   return (
-    <Card className="sticky top-20">
-      <h2 className="text-lg font-semibold text-brand-dark mb-6">
-        Your Fleet Configuration
+    <Card className="sticky top-16" padding="md">
+      <h2 className="text-base font-semibold text-brand-text mb-5">
+        Fleet Configuration
       </h2>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Country Selector */}
         <div>
-          <label className="block text-sm font-medium text-brand-dark mb-2">
+          <label className="block text-sm font-medium text-brand-text mb-1.5">
             Market
           </label>
           <select
             value={state.country}
             onChange={(e) => onChange("country", e.target.value)}
-            className="w-full px-3 py-2.5 bg-brand-light border border-brand-secondary rounded-lg text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-tether/30 focus:border-brand-tether transition-colors"
+            className="w-full px-3 py-2 bg-brand-light border border-brand-border rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary/15 focus:border-brand-primary-light transition-colors"
           >
             {COUNTRY_OPTIONS.map((c) => (
               <option key={c.value} value={c.value}>
@@ -37,20 +37,20 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
 
         {/* Charger Type Toggle */}
         <div>
-          <label className="block text-sm font-medium text-brand-dark mb-2">
+          <label className="block text-sm font-medium text-brand-text mb-1.5">
             Charger Type
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {CHARGER_TYPES.map((type) => (
               <button
                 key={type}
                 onClick={() => onChange("type", type)}
                 className={`
-                  px-4 py-2.5 rounded-lg text-sm font-medium transition-all
+                  px-3 py-2 rounded-md text-sm font-medium transition-colors
                   ${
                     state.type === type
-                      ? "bg-brand-primary text-white shadow-sm"
-                      : "bg-brand-light text-brand-muted hover:bg-brand-secondary"
+                      ? "bg-brand-primary text-white"
+                      : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
                   }
                 `}
               >
@@ -62,10 +62,10 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
 
         {/* Power Level Selector */}
         <div>
-          <label className="block text-sm font-medium text-brand-dark mb-2">
+          <label className="block text-sm font-medium text-brand-text mb-1.5">
             Charger Power
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {[
               { value: 0.0074, label: "7.4 kW" },
               { value: 0.011, label: "11 kW" },
@@ -75,11 +75,11 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
                 key={power.value}
                 onClick={() => onChange("powerMW", power.value)}
                 className={`
-                  px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                  px-2 py-2 rounded-md text-sm font-medium transition-colors
                   ${
                     state.powerMW === power.value
-                      ? "bg-brand-primary text-white shadow-sm"
-                      : "bg-brand-light text-brand-muted hover:bg-brand-secondary"
+                      ? "bg-brand-primary text-white"
+                      : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
                   }
                 `}
               >
@@ -92,11 +92,11 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
         {/* Sliders */}
         {SLIDER_CONFIGS.map((config) => (
           <div key={config.field}>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-brand-dark">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-medium text-brand-text">
                 {config.label}
               </label>
-              <span className="text-sm font-semibold text-brand-tether tabular-nums">
+              <span className="text-sm font-semibold text-brand-primary tabular-nums">
                 {config.format(state[config.field] as number)}
               </span>
             </div>
@@ -109,9 +109,9 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
               onChange={(e) =>
                 onChange(config.field, parseFloat(e.target.value))
               }
-              className="w-full h-2 bg-brand-secondary rounded-full appearance-none cursor-pointer accent-brand-tether [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-brand-tether [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer"
+              className="w-full"
             />
-            <div className="flex justify-between mt-1 text-xs text-brand-muted">
+            <div className="flex justify-between mt-0.5 text-xs text-brand-muted">
               <span>{config.format(config.min)}</span>
               <span>{config.format(config.max)}</span>
             </div>
@@ -120,20 +120,20 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
 
         {/* Horizon Toggle */}
         <div>
-          <label className="block text-sm font-medium text-brand-dark mb-2">
+          <label className="block text-sm font-medium text-brand-text mb-1.5">
             Projection Horizon
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {[12, 24].map((months) => (
               <button
                 key={months}
                 onClick={() => onChange("horizonMonths", months)}
                 className={`
-                  px-4 py-2.5 rounded-lg text-sm font-medium transition-all
+                  px-3 py-2 rounded-md text-sm font-medium transition-colors
                   ${
                     state.horizonMonths === months
-                      ? "bg-brand-primary text-white shadow-sm"
-                      : "bg-brand-light text-brand-muted hover:bg-brand-secondary"
+                      ? "bg-brand-primary text-white"
+                      : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
                   }
                 `}
               >

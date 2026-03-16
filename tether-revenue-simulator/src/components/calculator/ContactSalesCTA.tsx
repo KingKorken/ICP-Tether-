@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/shared/Card";
 import { Button } from "@/components/shared/Button";
 import { Modal } from "@/components/shared/Modal";
 import { trackEvent } from "@/lib/tracking/tracker";
@@ -63,9 +62,7 @@ export function ContactSalesCTA({
         return;
       }
 
-      // Also store the contact request
-      // TODO: Add proper contact request endpoint
-      void leadId; // Suppress unused warning
+      void leadId;
 
       setIsSubmitted(true);
     } catch {
@@ -77,39 +74,34 @@ export function ContactSalesCTA({
 
   return (
     <>
-      <Card
-        padding="lg"
-        className="mt-8 bg-gradient-to-br from-brand-tether/5 to-brand-accent/5 border-brand-tether/20"
-      >
-        <div className="text-center max-w-xl mx-auto">
-          <h3 className="font-display text-2xl font-bold text-brand-dark mb-3">
-            Ready to Unlock This Revenue?
-          </h3>
-          <p className="text-brand-muted mb-6">
-            Talk to our team about how Tether can start generating these returns
-            from your existing charge point infrastructure.
-          </p>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleOpenModal}
-          >
-            Contact Our Sales Team
-          </Button>
-        </div>
-      </Card>
+      <div className="bg-brand-subtle/60 rounded-lg border border-brand-border/40 p-8">
+        <h3 className="text-xl font-semibold text-brand-text mb-2">
+          Ready to unlock this revenue?
+        </h3>
+        <p className="text-brand-muted text-sm mb-5 max-w-lg">
+          Talk to our team about how Tether can start generating these returns
+          from your existing charge point infrastructure.
+        </p>
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={handleOpenModal}
+        >
+          Contact Our Sales Team
+        </Button>
+      </div>
 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={isSubmitted ? "Message Sent!" : "Contact Sales"}
+        title={isSubmitted ? "Message Sent" : "Contact Sales"}
         maxWidth="md"
       >
         {isSubmitted ? (
-          <div className="text-center py-4">
-            <div className="w-12 h-12 bg-brand-tether/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="py-4">
+            <div className="w-10 h-10 bg-brand-ecredit/10 rounded-full flex items-center justify-center mb-3">
               <svg
-                className="w-6 h-6 text-brand-tether"
+                className="w-5 h-5 text-brand-ecredit"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -122,24 +114,23 @@ export function ContactSalesCTA({
                 />
               </svg>
             </div>
-            <p className="text-brand-dark font-medium mb-2">
+            <p className="text-brand-text font-medium mb-1">
               We&apos;ve received your message
             </p>
-            <p className="text-brand-muted text-sm">
+            <p className="text-brand-muted text-sm mb-4">
               A member of our sales team will reach out to you shortly.
             </p>
-            <Button
-              variant="ghost"
-              className="mt-4"
+            <button
+              className="text-sm text-brand-muted hover:text-brand-text transition-colors"
               onClick={() => setIsModalOpen(false)}
             >
               Close
-            </Button>
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-brand-dark mb-1.5">
+              <label className="block text-sm font-medium text-brand-text mb-1.5">
                 Message (optional)
               </label>
               <textarea
@@ -148,7 +139,7 @@ export function ContactSalesCTA({
                 placeholder="Tell us about your fleet and what you'd like to discuss..."
                 rows={4}
                 maxLength={2000}
-                className="w-full px-3 py-2.5 border border-brand-secondary rounded-lg text-brand-dark placeholder-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-tether/30 focus:border-brand-tether transition-colors resize-none"
+                className="w-full px-3 py-2.5 border border-brand-border rounded-lg text-sm text-brand-text placeholder-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-primary/15 focus:border-brand-primary-light transition-colors resize-none"
               />
               <p className="text-xs text-brand-muted mt-1">
                 {message.length}/2000
@@ -156,21 +147,21 @@ export function ContactSalesCTA({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-brand-dark mb-2">
+              <label className="block text-sm font-medium text-brand-text mb-1.5">
                 Preferred Contact Method
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 {(["email", "phone"] as const).map((method) => (
                   <button
                     key={method}
                     type="button"
                     onClick={() => setPreferredContact(method)}
                     className={`
-                      px-4 py-2.5 rounded-lg text-sm font-medium transition-all capitalize
+                      px-3 py-2 rounded-md text-sm font-medium transition-colors capitalize
                       ${
                         preferredContact === method
                           ? "bg-brand-primary text-white"
-                          : "bg-brand-light text-brand-muted hover:bg-brand-secondary"
+                          : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
                       }
                     `}
                   >

@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 interface CardProps {
   children: ReactNode;
   className?: string;
-  padding?: "sm" | "md" | "lg";
+  padding?: "sm" | "md" | "lg" | "none";
 }
 
 const paddingStyles = {
+  none: "",
   sm: "p-4",
   md: "p-6",
   lg: "p-8",
@@ -20,7 +21,7 @@ export function Card({
   return (
     <div
       className={`
-        bg-white rounded-xl shadow-sm border border-brand-secondary/50
+        bg-brand-surface rounded-lg border border-brand-border/60
         ${paddingStyles[padding]}
         ${className}
       `}

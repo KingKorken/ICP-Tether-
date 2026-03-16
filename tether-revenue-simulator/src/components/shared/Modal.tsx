@@ -51,12 +51,11 @@ export function Modal({
     <dialog
       ref={dialogRef}
       className={`
-        ${maxWidthStyles[maxWidth]} w-full rounded-xl p-0
-        backdrop:bg-brand-dark/50 backdrop:backdrop-blur-sm
+        ${maxWidthStyles[maxWidth]} w-full rounded-lg p-0 border border-brand-border/60
+        backdrop:bg-brand-dark/40 backdrop:backdrop-blur-sm
         open:animate-in open:fade-in open:zoom-in-95
       `}
       onClick={(e) => {
-        // Close on backdrop click
         if (e.target === dialogRef.current) {
           onClose();
         }
@@ -65,17 +64,17 @@ export function Modal({
       <div className="p-6">
         {title && (
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-brand-dark">
+            <h2 className="text-base font-semibold text-brand-text">
               {title}
             </h2>
             <button
               onClick={onClose}
-              className="text-brand-muted hover:text-brand-dark transition-colors"
+              className="text-brand-muted hover:text-brand-text transition-colors"
               aria-label="Close"
             >
               <svg
-                width="24"
-                height="24"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"

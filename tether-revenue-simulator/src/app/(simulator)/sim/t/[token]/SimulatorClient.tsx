@@ -49,7 +49,6 @@ export function SimulatorClient({
   useEffect(() => {
     const initSession = async () => {
       try {
-        // Create a session
         const res = await fetch("/api/events/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -65,7 +64,6 @@ export function SimulatorClient({
                 client_timestamp: new Date().toISOString(),
               },
             ],
-            // Use a temporary session ID — in production this would come from a session creation endpoint
             session_id: crypto.randomUUID(),
             token_id: tokenId,
           }),
@@ -122,9 +120,7 @@ export function SimulatorClient({
             }),
           });
 
-          // Save snapshot
-          // TODO: Add proper snapshot save endpoint
-          void result; // Use variable to prevent lint warning
+          void result;
         } catch {
           // Silent failure
         } finally {
@@ -142,7 +138,6 @@ export function SimulatorClient({
         const oldValue = String(prev[field]);
         const newState = { ...prev, [field]: value };
 
-        // Track the change
         trackEvent({
           type: EVENTS.INPUT_CHANGED,
           payload: {
@@ -152,7 +147,6 @@ export function SimulatorClient({
           },
         });
 
-        // Trigger debounced save
         debouncedSave(newState);
 
         return newState;
@@ -173,11 +167,11 @@ export function SimulatorClient({
   if (loadingState === "loading") {
     return (
       <div className="min-h-screen bg-brand-light flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-brand-tether/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <div className="w-6 h-6 border-2 border-brand-tether border-t-transparent rounded-full animate-spin" />
+        <div>
+          <div className="w-10 h-10 bg-brand-primary/10 rounded-full flex items-center justify-center mb-3 animate-pulse">
+            <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
           </div>
-          <p className="text-brand-muted">Loading your simulator...</p>
+          <p className="text-brand-muted text-sm">Loading your simulator...</p>
         </div>
       </div>
     );
@@ -186,11 +180,11 @@ export function SimulatorClient({
   if (loadingState === "error") {
     return (
       <div className="min-h-screen bg-brand-light flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <p className="text-brand-warm text-lg font-semibold mb-2">
+        <div className="max-w-md">
+          <p className="text-brand-warm text-base font-semibold mb-1">
             Something went wrong
           </p>
-          <p className="text-brand-muted">
+          <p className="text-brand-muted text-sm">
             We couldn&apos;t load your saved data. Please refresh the page.
           </p>
         </div>
@@ -201,21 +195,21 @@ export function SimulatorClient({
   return (
     <div className="min-h-screen bg-brand-light">
       {/* Header */}
-      <header className="bg-brand-dark text-white py-4 px-6 sticky top-0 z-50">
+      <header className="bg-brand-dark py-3 px-6 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="font-display text-xl font-bold">Tether</span>
-            <span className="text-brand-muted text-sm">Revenue Simulator</span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg font-semibold text-white tracking-tight">Tether</span>
+            <span className="text-brand-muted text-xs font-medium tracking-wide uppercase">Revenue Simulator</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {isSaving && (
               <span className="text-xs text-brand-muted flex items-center gap-1.5">
-                <div className="w-2 h-2 bg-brand-tether rounded-full animate-pulse" />
-                Saving...
+                <div className="w-1.5 h-1.5 bg-brand-ecredit rounded-full animate-pulse" />
+                Saving
               </span>
             )}
             {inputs.company && (
-              <span className="text-sm text-brand-secondary">
+              <span className="text-sm text-brand-muted font-medium">
                 {inputs.company}
               </span>
             )}
@@ -224,13 +218,10 @@ export function SimulatorClient({
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Results Hero */}
-        <ResultsHero results={results} companyName={inputs.company} />
-
-        {/* Calculator Form + Charts Grid */}
-        <div className="grid lg:grid-cols-12 gap-8 mt-8">
-          {/* Left Column: Form */}
+      <main className="max-w-7xl mx-auto px-6">
+        {/* Configuration + Results — side by side */}
+        <div className="grid lg:grid-cols-12 gap-6 pt-8">
+          {/* Left Column: Form (sticky) */}
           <div className="lg:col-span-4">
             <CalculatorForm
               state={inputs}
@@ -238,39 +229,47 @@ export function SimulatorClient({
             />
           </div>
 
-          {/* Right Column: Charts */}
-          <div className="lg:col-span-8 space-y-8">
-            <SeasonalChart data={results.monthly} />
-            <CumulativeTimeline data={results.cumulative} totalMonths={results.totalMonths} />
+          {/* Right Column: Results output + Charts */}
+          <div className="lg:col-span-8">
+            <ResultsHero results={results} companyName={inputs.company} />
+
+            <div className="mt-10 space-y-10">
+              <SeasonalChart data={results.monthly} />
+              <CumulativeTimeline data={results.cumulative} totalMonths={results.totalMonths} />
+            </div>
           </div>
         </div>
 
-        {/* Loss Counter */}
-        <LossCounter
-          cumulativeTotal={
-            results.cumulative[results.cumulative.length - 1]?.cumulativeCombined ?? 0
-          }
-          totalMonths={results.totalMonths}
-          companyName={inputs.company}
-        />
+        {/* Loss Counter — generous section break */}
+        <div className="mt-16">
+          <LossCounter
+            cumulativeTotal={
+              results.cumulative[results.cumulative.length - 1]?.cumulativeCombined ?? 0
+            }
+            totalMonths={results.totalMonths}
+            companyName={inputs.company}
+          />
+        </div>
 
         {/* Contact Sales CTA */}
-        <ContactSalesCTA
-          tokenId={tokenId}
-          leadId={leadId}
-          accessToken={accessToken}
-        />
+        <div className="mt-6 mb-16">
+          <ContactSalesCTA
+            tokenId={tokenId}
+            leadId={leadId}
+            accessToken={accessToken}
+          />
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="bg-brand-dark py-8 px-6 mt-12">
-        <div className="max-w-7xl mx-auto flex items-center justify-between text-sm text-brand-muted">
+      <footer className="border-t border-brand-border/60 py-6 px-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-brand-muted">
           <span>&copy; {new Date().getFullYear()} Tether EV</span>
           <div className="flex items-center gap-4">
-            <a href="/privacy" className="hover:text-white transition-colors">
+            <a href="/privacy" className="hover:text-brand-text transition-colors">
               Privacy
             </a>
-            <a href="/terms" className="hover:text-white transition-colors">
+            <a href="/terms" className="hover:text-brand-text transition-colors">
               Terms
             </a>
           </div>

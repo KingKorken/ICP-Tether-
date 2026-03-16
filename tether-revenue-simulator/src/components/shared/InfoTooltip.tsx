@@ -37,7 +37,7 @@ export function InfoTooltip({ content, disclaimer, className = "" }: InfoTooltip
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full border border-current opacity-50 hover:opacity-100 transition-opacity cursor-pointer flex-shrink-0"
+        className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full border border-current opacity-40 hover:opacity-70 transition-opacity cursor-pointer flex-shrink-0"
         aria-label="More information"
         type="button"
       >
@@ -58,17 +58,17 @@ export function InfoTooltip({ content, disclaimer, className = "" }: InfoTooltip
       {isOpen && (
         <div
           ref={tooltipRef}
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-white rounded-xl shadow-xl border border-brand-secondary/30 p-4 text-left"
+          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-brand-surface rounded-lg border border-brand-border/80 p-4 text-left shadow-sm"
         >
-          <p className="text-sm text-brand-dark leading-relaxed">{content}</p>
+          <p className="text-sm text-brand-text leading-relaxed">{content}</p>
           {disclaimer && (
-            <p className="text-xs text-brand-muted mt-2 pt-2 border-t border-brand-secondary/20 italic">
+            <p className="text-xs text-brand-muted mt-2 pt-2 border-t border-brand-border/40 italic">
               {disclaimer}
             </p>
           )}
           {/* Arrow */}
           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px]">
-            <div className="w-3 h-3 bg-white border-r border-b border-brand-secondary/30 transform rotate-45 -translate-y-1.5" />
+            <div className="w-3 h-3 bg-brand-surface border-r border-b border-brand-border/80 transform rotate-45 -translate-y-1.5" />
           </div>
         </div>
       )}
