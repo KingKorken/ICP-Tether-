@@ -11,6 +11,7 @@ import {
   Legend,
 } from "recharts";
 import { Card } from "@/components/shared/Card";
+import { InfoTooltip } from "@/components/shared/InfoTooltip";
 import { formatEur } from "@/lib/utils/formatter";
 import type { MonthlyBreakdown } from "@/lib/calculator/types";
 
@@ -21,9 +22,16 @@ interface SeasonalChartProps {
 export function SeasonalChart({ data }: SeasonalChartProps) {
   return (
     <Card>
-      <h3 className="text-lg font-semibold text-brand-dark mb-1">
-        Monthly Revenue Breakdown
-      </h3>
+      <div className="flex items-start justify-between mb-1">
+        <h3 className="text-lg font-semibold text-brand-dark">
+          Monthly Revenue Breakdown
+        </h3>
+        <InfoTooltip
+          content="This chart shows how your combined E-Credit and grid flexibility revenue varies month by month, driven by seasonal energy demand and market price fluctuations."
+          disclaimer="Market prices vary by month and country, based on real auction data from Nordic and European energy markets."
+          className="text-brand-muted mt-1"
+        />
+      </div>
       <p className="text-sm text-brand-muted mb-4">
         Seasonal variation across 12 months
       </p>

@@ -7,7 +7,6 @@ import { ResultsHero } from "@/components/calculator/ResultsHero";
 import { SeasonalChart } from "@/components/calculator/SeasonalChart";
 import { CumulativeTimeline } from "@/components/calculator/CumulativeTimeline";
 import { LossCounter } from "@/components/calculator/LossCounter";
-import { MethodologyPanel } from "@/components/calculator/MethodologyPanel";
 import { ContactSalesCTA } from "@/components/calculator/ContactSalesCTA";
 import { startBatcher, stopBatcher, trackEvent } from "@/lib/tracking/tracker";
 import { EVENTS } from "@/lib/tracking/events";
@@ -254,9 +253,6 @@ export function SimulatorClient({
           totalMonths={results.totalMonths}
           companyName={inputs.company}
         />
-
-        {/* Methodology */}
-        <MethodologyPanel />
 
         {/* Contact Sales CTA */}
         <ContactSalesCTA

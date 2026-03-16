@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card } from "@/components/shared/Card";
+import { InfoTooltip } from "@/components/shared/InfoTooltip";
 import { formatEur } from "@/lib/utils/formatter";
 import type { CumulativeData } from "@/lib/calculator/types";
 
@@ -24,9 +25,16 @@ export function CumulativeTimeline({
 }: CumulativeTimelineProps) {
   return (
     <Card>
-      <h3 className="text-lg font-semibold text-brand-dark mb-1">
-        Cumulative Revenue Timeline
-      </h3>
+      <div className="flex items-start justify-between mb-1">
+        <h3 className="text-lg font-semibold text-brand-dark">
+          Cumulative Revenue Timeline
+        </h3>
+        <InfoTooltip
+          content="This chart shows your total accumulated revenue over time, combining both E-Credit and grid flexibility income streams based on your charger capacity and live market prices."
+          disclaimer="Projections are estimates based on current market conditions and may vary."
+          className="text-brand-muted mt-1"
+        />
+      </div>
       <p className="text-sm text-brand-muted mb-4">
         Total accumulated revenue over {totalMonths} months
       </p>

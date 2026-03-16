@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/shared/Card";
+import { InfoTooltip } from "@/components/shared/InfoTooltip";
 import { formatEur } from "@/lib/utils/formatter";
 import type { CalculationResult } from "@/lib/calculator/types";
 
@@ -37,16 +38,24 @@ export function ResultsHero({ results, companyName }: ResultsHeroProps) {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-brand-accent text-xs font-medium uppercase tracking-wider mb-1">
+              <p className="text-brand-accent text-xs font-medium uppercase tracking-wider mb-1 flex items-center gap-1.5">
                 E-Credits
+                <InfoTooltip
+                  content="E-Credit revenue is calculated based on your charging volume, renewable energy contribution, and current carbon credit market rates."
+                  disclaimer="Rates reflect current EU carbon credit pricing and may vary by region."
+                />
               </p>
               <p className="text-2xl font-bold tabular-nums">
                 {formatEur(results.ecreditCPO)}
               </p>
             </div>
             <div>
-              <p className="text-brand-tether text-xs font-medium uppercase tracking-wider mb-1">
+              <p className="text-brand-tether text-xs font-medium uppercase tracking-wider mb-1 flex items-center gap-1.5">
                 Grid Flexibility
+                <InfoTooltip
+                  content="Grid flexibility revenue is derived from your charger capacity, flexible availability, and live market prices for frequency regulation services."
+                  disclaimer="Market prices vary by month and country, based on real auction data from Nordic and European energy markets."
+                />
               </p>
               <p className="text-2xl font-bold tabular-nums">
                 {formatEur(results.flexCPO)}
