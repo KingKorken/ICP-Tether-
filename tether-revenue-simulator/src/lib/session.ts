@@ -8,27 +8,30 @@ export interface SessionData {
   isVerified?: boolean;
 }
 
-const sessionSecret = process.env.SESSION_SECRET;
-
-if (!sessionSecret || sessionSecret.length < 32) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "SESSION_SECRET must be at least 32 characters in production"
-    );
+function getSessionPassword(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    if (process.env.NODE_ENV === "production" && typeof window === "undefined") {
+      console.warn("SESSION_SECRET is missing or too short — session features will not work");
+    }
+    return "development-secret-must-be-at-least-32-chars!!";
   }
+  return secret;
 }
 
-export const sessionOptions: SessionOptions = {
-  password: sessionSecret ?? "development-secret-must-be-at-least-32-chars!!",
-  cookieName: "tether_sim_session",
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-  },
-};
+export function getSessionOptions(): SessionOptions {
+  return {
+    password: getSessionPassword(),
+    cookieName: "tether_sim_session",
+    cookieOptions: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax" as const,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    },
+  };
+}
 
 /**
  * Get the current session from cookies.
@@ -36,5 +39,5 @@ export const sessionOptions: SessionOptions = {
  */
 export async function getSession() {
   const cookieStore = await cookies();
-  return getIronSession<SessionData>(cookieStore, sessionOptions);
+  return getIronSession<SessionData>(cookieStore, getSessionOptions());
 }
