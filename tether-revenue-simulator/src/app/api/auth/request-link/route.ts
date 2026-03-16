@@ -23,7 +23,13 @@ const requestSchema = z.object({
   companyName: z.string().max(200).default(""),
 });
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("Missing RESEND_API_KEY environment variable");
+  }
+  return new Resend(apiKey);
+}
 
 export async function POST(request: NextRequest) {
   // CSRF check
@@ -106,7 +112,7 @@ export async function POST(request: NextRequest) {
     // 5. Send magic link email (AFTER DB transaction)
     const magicLinkUrl = buildMagicLinkUrl(verificationCode);
 
-    await resend.emails.send({
+    await getResendClient().emails.send({
       from: process.env.RESEND_FROM_EMAIL ?? "Tether <noreply@tetherev.io>",
       to: email,
       subject: "Your Revenue Simulator Access — Tether",
