@@ -212,7 +212,7 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
           >
             {COUNTRY_OPTIONS.map((c) => (
               <option key={c.value} value={c.value}>
-                {c.flag} {c.label}
+                {c.label}
               </option>
             ))}
           </select>
