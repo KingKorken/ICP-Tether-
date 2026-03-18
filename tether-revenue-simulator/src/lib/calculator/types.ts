@@ -97,6 +97,17 @@ export interface SliderConfig {
   max: number;
   step: number;
   format: (value: number) => string;
+  /** Convert internal value to display value (e.g. 0.15 -> 15 for percentages) */
+  toDisplay: (value: number) => number;
+  /** Convert display value back to internal value (e.g. 15 -> 0.15 for percentages) */
+  fromDisplay: (display: number) => number;
+  displayMin: number;
+  displayMax: number;
+  displayStep: number;
+  /** Suffix shown outside the input (e.g. "%") */
+  suffix?: string;
+  /** Format the internal value for the text input (no suffix) */
+  formatInput: (value: number) => string;
 }
 
 export const SLIDER_CONFIGS: SliderConfig[] = [
@@ -107,6 +118,12 @@ export const SLIDER_CONFIGS: SliderConfig[] = [
     max: 10000,
     step: 10,
     format: (v) => v.toLocaleString("en-US"),
+    toDisplay: (v) => v,
+    fromDisplay: (d) => d,
+    displayMin: 10,
+    displayMax: 10000,
+    displayStep: 10,
+    formatInput: (v) => v.toLocaleString("en-US"),
   },
   {
     field: "utilization",
@@ -115,6 +132,13 @@ export const SLIDER_CONFIGS: SliderConfig[] = [
     max: 0.40,
     step: 0.01,
     format: (v) => `${Math.round(v * 100)}%`,
+    toDisplay: (v) => Math.round(v * 100),
+    fromDisplay: (d) => d / 100,
+    displayMin: 5,
+    displayMax: 40,
+    displayStep: 1,
+    suffix: "%",
+    formatInput: (v) => String(Math.round(v * 100)),
   },
   {
     field: "flexPotential",
@@ -123,5 +147,12 @@ export const SLIDER_CONFIGS: SliderConfig[] = [
     max: 0.80,
     step: 0.05,
     format: (v) => `${Math.round(v * 100)}%`,
+    toDisplay: (v) => Math.round(v * 100),
+    fromDisplay: (d) => d / 100,
+    displayMin: 20,
+    displayMax: 80,
+    displayStep: 5,
+    suffix: "%",
+    formatInput: (v) => String(Math.round(v * 100)),
   },
 ];
