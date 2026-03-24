@@ -32,7 +32,7 @@ export const SimulatorStateSchema = z.object({
   }),
   utilization: z.number().min(0.05).max(0.40),
   flexPotential: z.number().min(0.20).max(0.80),
-  horizonMonths: z.number().int().min(12).max(24).default(12),
+  horizonMonths: z.union([z.literal(3), z.literal(6), z.literal(12)]).default(12),
 });
 
 export type SimulatorState = z.infer<typeof SimulatorStateSchema>;

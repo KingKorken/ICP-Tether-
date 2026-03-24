@@ -14,14 +14,6 @@ export const MONTH_LABELS = [
 ] as const;
 
 /**
- * Short month labels for 24-month timeline.
- */
-export const MONTH_LABELS_24 = [
-  "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
-  "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
-] as const;
-
-/**
  * Charger type profiles with default operating parameters.
  */
 export const PROFILES = {
@@ -71,3 +63,9 @@ export const RES_SEASONAL = [
  * CPO's revenue share percentage.
  */
 export const CPO_SHARE = 0.40;
+
+/**
+ * Fixed Y-axis ceiling for the seasonal (monthly) chart.
+ * Derived from theoretical max inputs (~1.53M), rounded up to 2M.
+ */
+export const MAX_MONTHLY_CEILING = 2_000_000;
