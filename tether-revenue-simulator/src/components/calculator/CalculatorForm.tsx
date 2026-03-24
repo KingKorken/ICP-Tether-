@@ -13,8 +13,6 @@ import {
 interface CalculatorFormProps {
   state: SimulatorState;
   onChange: (field: keyof SimulatorState, value: SimulatorState[keyof SimulatorState]) => void;
-  onCalculate: () => void;
-  isCalculating: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -194,7 +192,7 @@ function SliderWithInput({
 // CalculatorForm
 // ---------------------------------------------------------------------------
 
-export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: CalculatorFormProps) {
+export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
   return (
     <Card className="sticky top-16" padding="md">
       <h2 className="text-base font-semibold text-brand-text mb-5">
@@ -289,8 +287,8 @@ export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: 
           <label className="block text-sm font-medium text-brand-text mb-1.5">
             Projection Horizon
           </label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {[3, 6, 12].map((months) => (
+          <div className="grid grid-cols-2 gap-1.5">
+            {[12, 24].map((months) => (
               <button
                 key={months}
                 onClick={() => onChange("horizonMonths", months)}
@@ -303,28 +301,12 @@ export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: 
                   }
                 `}
               >
-                {months} mo
+                {months} months
               </button>
             ))}
           </div>
         </div>
       </div>
-
-      {/* Calculate Button */}
-      <button
-        onClick={onCalculate}
-        disabled={isCalculating}
-        className={`
-          mt-6 w-full py-3 rounded-lg text-sm font-semibold transition-colors
-          ${
-            isCalculating
-              ? "bg-brand-subtle text-brand-muted cursor-not-allowed"
-              : "bg-brand-primary text-white hover:bg-brand-primary-light active:bg-brand-primary"
-          }
-        `}
-      >
-        {isCalculating ? "Calculating..." : "Calculate Revenue"}
-      </button>
     </Card>
   );
 }

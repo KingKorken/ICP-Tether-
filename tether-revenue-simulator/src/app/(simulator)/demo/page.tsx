@@ -14,7 +14,6 @@ export default function DemoPage() {
       leadId="demo-lead"
       initialState={{ ...DEFAULT_STATE, company: "Demo Company" }}
       hasExistingSnapshot={false}
-      isDemoMode
     />
   );
 }

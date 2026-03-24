@@ -14,6 +14,14 @@ export const MONTH_LABELS = [
 ] as const;
 
 /**
+ * Short month labels for 24-month timeline.
+ */
+export const MONTH_LABELS_24 = [
+  "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
+  "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
+] as const;
+
+/**
  * Charger type profiles with default operating parameters.
  */
 export const PROFILES = {
@@ -63,11 +71,3 @@ export const RES_SEASONAL = [
  * CPO's revenue share percentage.
  */
 export const CPO_SHARE = 0.40;
-
-/**
- * Fixed Y-axis ceiling for the seasonal (monthly) chart.
- * Derived from theoretical max: 10,000 chargers, 22 kW, 40% util,
- * 80% flex, public type, best country/month ≈ 1.53M EUR.
- * Rounded up to 2M for generous headroom.
- */
-export const MAX_MONTHLY_CEILING = 2_000_000;
