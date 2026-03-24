@@ -7,10 +7,9 @@ import type { CalculationResult } from "@/lib/calculator/types";
 interface ResultsHeroProps {
   results: CalculationResult;
   companyName: string;
-  horizonMonths?: number;
 }
 
-export function ResultsHero({ results, companyName, horizonMonths = 12 }: ResultsHeroProps) {
+export function ResultsHero({ results, companyName }: ResultsHeroProps) {
   const ecreditPct =
     results.totalCPO > 0
       ? Math.round((results.ecreditCPO / results.totalCPO) * 100)
@@ -21,13 +20,13 @@ export function ResultsHero({ results, companyName, horizonMonths = 12 }: Result
     <div className="pb-8 border-b border-brand-border/60">
       {/* Total Revenue — left-aligned, contextual output */}
       <p className="text-sm text-brand-muted mb-1">
-        Estimated {horizonMonths === 12 ? "annual" : `${horizonMonths}-month`} revenue{companyName ? ` for ${companyName}` : ""}
+        Estimated annual revenue{companyName ? ` for ${companyName}` : ""}
       </p>
       <p className="text-4xl lg:text-5xl font-bold text-brand-revenue tracking-tight tabular-nums">
         {formatEur(results.totalCPO)}
       </p>
       <p className="text-sm text-brand-muted mt-1.5">
-        {formatEur(results.perCharger)} per charger / {horizonMonths === 12 ? "year" : `${horizonMonths} mo`}
+        {formatEur(results.perCharger)} per charger / year
       </p>
 
       {/* Revenue Streams */}

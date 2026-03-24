@@ -11,7 +11,6 @@ import {
 } from "recharts";
 import { InfoTooltip } from "@/components/shared/InfoTooltip";
 import { formatEur } from "@/lib/utils/formatter";
-import { MAX_MONTHLY_CEILING } from "@/lib/calculator/constants";
 import type { CumulativeData } from "@/lib/calculator/types";
 
 interface CumulativeTimelineProps {
@@ -70,8 +69,6 @@ export function CumulativeTimeline({
               interval={totalMonths <= 12 ? 0 : 1}
             />
             <YAxis
-              domain={[0, MAX_MONTHLY_CEILING * totalMonths]}
-              allowDataOverflow={false}
               tickFormatter={(v: number) => {
                 if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
                 if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
