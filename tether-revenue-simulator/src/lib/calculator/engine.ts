@@ -23,8 +23,14 @@ import type { SimulatorState, CalculationResult } from "./types";
 /**
  * Calculate revenue projections for the given simulator state.
  * This is the core calculation — must complete in <16ms for 60fps.
+ *
+ * @param startMonth - Calendar month to start from (0=Jan, 11=Dec).
+ *                     Defaults to current month.
  */
-export function calculateRevenue(state: SimulatorState): CalculationResult {
+export function calculateRevenue(
+  state: SimulatorState,
+  startMonth: number = new Date().getMonth()
+): CalculationResult {
   const profile = PROFILES[state.type];
   const market = MARKET_DATA[state.country];
   const { chargers, powerMW, utilization: util, flexPotential: flex } = state;
@@ -50,7 +56,7 @@ export function calculateRevenue(state: SimulatorState): CalculationResult {
   const monthlyFlex: number[] = [];
 
   for (let m = 0; m < totalMonths; m++) {
-    const mi = m % 12; // Month index (wraps for 24-month horizon)
+    const mi = (startMonth + m) % 12; // Calendar month index
 
     // E-credits with seasonal adjustment
     monthlyEcredits.push(monthlyEcreditCPO * RES_SEASONAL[mi]);
@@ -74,16 +80,14 @@ export function calculateRevenue(state: SimulatorState): CalculationResult {
     );
   }
 
-  // --- Aggregate Annual Values ---
-  const totalEcreditsCPO = monthlyEcredits
-    .slice(0, 12)
-    .reduce((a, b) => a + b, 0);
-  const totalFlex = monthlyFlex.slice(0, 12).reduce((a, b) => a + b, 0);
+  // --- Aggregate Values for Selected Horizon ---
+  const totalEcreditsCPO = monthlyEcredits.reduce((a, b) => a + b, 0);
+  const totalFlex = monthlyFlex.reduce((a, b) => a + b, 0);
   const totalCPO = totalEcreditsCPO + totalFlex;
 
   // --- Monthly Breakdown (for seasonal chart) ---
-  const monthly = monthlyFlex.slice(0, 12).map((flexValue, i) => ({
-    month: MONTH_LABELS[i],
+  const monthly = monthlyFlex.map((flexValue, i) => ({
+    month: MONTH_LABELS[(startMonth + i) % 12],
     ecredits: monthlyEcredits[i],
     flexibility: flexValue,
     combined: flexValue + monthlyEcredits[i],
@@ -99,10 +103,7 @@ export function calculateRevenue(state: SimulatorState): CalculationResult {
     runCombined += combined;
     runEcredits += monthlyEcredits[m];
     cumulative.push({
-      month:
-        totalMonths <= 12
-          ? MONTH_LABELS[m]
-          : `M${m + 1}`,
+      month: MONTH_LABELS[(startMonth + m) % 12],
       cumulativeCombined: runCombined,
       cumulativeEcredits: runEcredits,
     });

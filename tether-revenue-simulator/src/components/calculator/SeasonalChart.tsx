@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { InfoTooltip } from "@/components/shared/InfoTooltip";
 import { formatEur } from "@/lib/utils/formatter";
+import { MAX_MONTHLY_CEILING } from "@/lib/calculator/constants";
 import type { MonthlyBreakdown } from "@/lib/calculator/types";
 
 interface SeasonalChartProps {
@@ -32,7 +33,7 @@ export function SeasonalChart({ data }: SeasonalChartProps) {
         />
       </div>
       <p className="text-sm text-brand-muted mb-4">
-        Seasonal variation across 12 months
+        Monthly revenue breakdown ({data.length} months)
       </p>
 
       <div className="h-[280px]">
@@ -60,13 +61,17 @@ export function SeasonalChart({ data }: SeasonalChartProps) {
               tickLine={false}
             />
             <YAxis
-              tickFormatter={(v: number) =>
-                v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)
-              }
+              domain={[0, MAX_MONTHLY_CEILING]}
+              allowDataOverflow={false}
+              tickFormatter={(v: number) => {
+                if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
+                return String(v);
+              }}
               tick={{ fontSize: 11, fill: "#6b7a72" }}
               axisLine={false}
               tickLine={false}
-              width={50}
+              width={55}
             />
             <Tooltip
               formatter={(value: number, name: string) => [
