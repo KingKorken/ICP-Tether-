@@ -32,7 +32,7 @@ export function SeasonalChart({ data }: SeasonalChartProps) {
         />
       </div>
       <p className="text-sm text-brand-muted mb-4">
-        Seasonal variation across 12 months
+        Monthly revenue breakdown ({data.length} months)
       </p>
 
       <div className="h-[280px]">

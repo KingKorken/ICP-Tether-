@@ -7,7 +7,7 @@ import { ResultsHero } from "@/components/calculator/ResultsHero";
 import { SeasonalChart } from "@/components/calculator/SeasonalChart";
 import { CumulativeTimeline } from "@/components/calculator/CumulativeTimeline";
 import { LossCounter } from "@/components/calculator/LossCounter";
-import { ContactSalesCTA } from "@/components/calculator/ContactSalesCTA";
+import { MethodologyPanel } from "@/components/calculator/MethodologyPanel";
 import { startBatcher, stopBatcher, trackEvent } from "@/lib/tracking/tracker";
 import { EVENTS } from "@/lib/tracking/events";
 import type { SimulatorState } from "@/lib/calculator/types";
@@ -34,15 +34,19 @@ export function SimulatorClient({
     hasExistingSnapshot ? "ready" : "ready"
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
   const saveVersionRef = useRef(0);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionIdRef = useRef<string>("");
 
+  // Compute start month once at mount
+  const [startMonth] = useState(() => new Date().getMonth());
+
   // Use deferred value for smooth slider interaction
   const deferredInputs = useDeferredValue(inputs);
   const results = useMemo(
-    () => calculateRevenue(deferredInputs),
-    [deferredInputs]
+    () => calculateRevenue(deferredInputs, startMonth),
+    [deferredInputs, startMonth]
   );
 
   // Initialize session and event batcher
@@ -130,6 +134,15 @@ export function SimulatorClient({
     },
     [tokenId]
   );
+
+  // Calculate button — shows overlay animation, then saves
+  const handleCalculate = useCallback(async () => {
+    setIsCalculating(true);
+    const delay = Math.random() * 2000 + 1000;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    setIsCalculating(false);
+    debouncedSave(inputs);
+  }, [inputs, debouncedSave]);
 
   // Handle input changes
   const handleInputChange = useCallback(
@@ -226,12 +239,23 @@ export function SimulatorClient({
             <CalculatorForm
               state={inputs}
               onChange={handleInputChange}
+              onCalculate={handleCalculate}
+              isCalculating={isCalculating}
             />
           </div>
 
           {/* Right Column: Results output + Charts */}
-          <div className="lg:col-span-8">
-            <ResultsHero results={results} companyName={inputs.company} />
+          <div className="lg:col-span-8 relative">
+            {isCalculating && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-brand-light/80 backdrop-blur-sm rounded-lg">
+                <div className="text-center">
+                  <div className="w-10 h-10 mx-auto mb-3 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                  <p className="text-base font-semibold text-brand-text">Recalculating...</p>
+                  <p className="text-sm text-brand-muted mt-1">Analyzing market conditions</p>
+                </div>
+              </div>
+            )}
+            <ResultsHero results={results} companyName={inputs.company} horizonMonths={inputs.horizonMonths} />
 
             <div className="mt-10 space-y-10">
               <SeasonalChart data={results.monthly} />
@@ -251,13 +275,9 @@ export function SimulatorClient({
           />
         </div>
 
-        {/* Contact Sales CTA */}
+        {/* Methodology / See the Math */}
         <div className="mt-6 mb-16">
-          <ContactSalesCTA
-            tokenId={tokenId}
-            leadId={leadId}
-            accessToken={accessToken}
-          />
+          <MethodologyPanel />
         </div>
       </main>
 
