@@ -10,6 +10,7 @@ export const COUNTRIES = [
   "germany",
   "netherlands",
   "france",
+  "denmark",
 ] as const;
 export type Country = (typeof COUNTRIES)[number];
 
@@ -18,6 +19,17 @@ export type ChargerType = (typeof CHARGER_TYPES)[number];
 
 export const POWER_OPTIONS = [0.0074, 0.011, 0.022] as const;
 export type PowerMW = (typeof POWER_OPTIONS)[number];
+
+/**
+ * Single charger group configuration.
+ */
+export interface ChargerGroup {
+  id: number;
+  chargers: number;
+  powerMW: number;
+  utilization: number;
+  flexPotential: number;
+}
 
 /**
  * Zod schema for simulator state — used for API boundary validation.
@@ -32,7 +44,9 @@ export const SimulatorStateSchema = z.object({
   }),
   utilization: z.number().min(0.05).max(0.40),
   flexPotential: z.number().min(0.20).max(0.80),
-  horizonMonths: z.number().int().min(12).max(24).default(12),
+  horizonMonths: z.number().int().refine((v) => [3, 6, 12].includes(v), {
+    message: "Horizon must be 3, 6, or 12 months",
+  }).default(12),
 });
 
 export type SimulatorState = z.infer<typeof SimulatorStateSchema>;
@@ -63,12 +77,14 @@ export interface CalculationResult {
   flexCPO: number;
   /** Revenue per charger per year */
   perCharger: number;
-  /** Monthly breakdown (12 months) for seasonal chart */
+  /** Monthly breakdown for seasonal chart */
   monthly: MonthlyBreakdown[];
   /** Cumulative data for timeline chart */
   cumulative: CumulativeData[];
   /** Total months in horizon */
   totalMonths: number;
+  /** Total chargers across all groups */
+  totalChargers: number;
 }
 
 // =============================================
@@ -86,6 +102,14 @@ export const DEFAULT_STATE: SimulatorState = {
   horizonMonths: 12,
 };
 
+export const DEFAULT_CHARGER_GROUP: ChargerGroup = {
+  id: 0,
+  chargers: 500,
+  powerMW: 0.011,
+  utilization: 0.15,
+  flexPotential: 0.50,
+};
+
 // =============================================
 // Input Field Config (for form generation)
 // =============================================
@@ -97,16 +121,12 @@ export interface SliderConfig {
   max: number;
   step: number;
   format: (value: number) => string;
-  /** Convert internal value to display value (e.g. 0.15 -> 15 for percentages) */
   toDisplay: (value: number) => number;
-  /** Convert display value back to internal value (e.g. 15 -> 0.15 for percentages) */
   fromDisplay: (display: number) => number;
   displayMin: number;
   displayMax: number;
   displayStep: number;
-  /** Suffix shown outside the input (e.g. "%") */
   suffix?: string;
-  /** Format the internal value for the text input (no suffix) */
   formatInput: (value: number) => string;
 }
 

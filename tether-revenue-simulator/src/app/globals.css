@@ -1,61 +1,61 @@
 @import "tailwindcss";
 
-/* Tether Brand Design Tokens — EV Charging Infrastructure */
+/* Tether Brand Design Tokens — Dark Theme */
 :root {
-  /* Primary: deep forest green — infrastructure, sustainability */
-  --brand-primary: #1a3a2a;
-  --brand-primary-light: #2d5a42;
-  /* Revenue moments: warm amber/gold */
-  --brand-revenue: #c78c20;
-  --brand-revenue-light: #f5dfa8;
+  /* Primary: deep navy — trust, infrastructure */
+  --brand-primary: #010A31;
+  --brand-primary-light: #0D1847;
+  /* Revenue moments: teal/green accent */
+  --brand-revenue: #E8654A;
+  --brand-revenue-light: #FF8B6B;
   /* E-Credits stream */
-  --brand-ecredit: #3a7d5c;
-  --brand-ecredit-light: #dceee4;
+  --brand-ecredit: #2ADFB7;
+  --brand-ecredit-light: #1A3A5C;
   /* Grid Flexibility stream */
-  --brand-flex: #c78c20;
-  --brand-flex-light: #faf0d8;
-  /* Stone/slate neutrals — tinted toward green */
-  --brand-dark: #1c2420;
-  --brand-text: #2a3430;
-  --brand-muted: #6b7a72;
-  --brand-border: #d4dbd7;
-  --brand-subtle: #e8ede9;
-  --brand-light: #f3f5f4;
-  --brand-surface: #f9faf9;
+  --brand-flex: #E8654A;
+  --brand-flex-light: #3A1A1A;
+  /* Neutrals — tinted toward blue */
+  --brand-dark: #010A31;
+  --brand-text: #FFFFFF;
+  --brand-muted: #7B8CA8;
+  --brand-border: rgba(42, 223, 183, 0.15);
+  --brand-subtle: rgba(42, 223, 183, 0.06);
+  --brand-light: #060E3A;
+  --brand-surface: #0D1847;
   /* Warm accent for urgency/warnings */
-  --brand-warm: #c2572a;
-  --brand-warm-light: #fbe8df;
+  --brand-warm: #E8654A;
+  --brand-warm-light: #3A1A1A;
 }
 
 /* Custom Tailwind theme extension */
 @theme {
-  --color-brand-primary: #1a3a2a;
-  --color-brand-primary-light: #2d5a42;
-  --color-brand-revenue: #c78c20;
-  --color-brand-revenue-light: #f5dfa8;
-  --color-brand-ecredit: #3a7d5c;
-  --color-brand-ecredit-light: #dceee4;
-  --color-brand-flex: #c78c20;
-  --color-brand-flex-light: #faf0d8;
-  --color-brand-dark: #1c2420;
-  --color-brand-text: #2a3430;
-  --color-brand-muted: #6b7a72;
-  --color-brand-border: #d4dbd7;
-  --color-brand-subtle: #e8ede9;
-  --color-brand-light: #f3f5f4;
-  --color-brand-surface: #f9faf9;
-  --color-brand-warm: #c2572a;
-  --color-brand-warm-light: #fbe8df;
+  --color-brand-primary: #010A31;
+  --color-brand-primary-light: #0D1847;
+  --color-brand-revenue: #E8654A;
+  --color-brand-revenue-light: #FF8B6B;
+  --color-brand-ecredit: #2ADFB7;
+  --color-brand-ecredit-light: #1A3A5C;
+  --color-brand-flex: #E8654A;
+  --color-brand-flex-light: #3A1A1A;
+  --color-brand-dark: #010A31;
+  --color-brand-text: #FFFFFF;
+  --color-brand-muted: #7B8CA8;
+  --color-brand-border: rgba(42, 223, 183, 0.15);
+  --color-brand-subtle: rgba(42, 223, 183, 0.06);
+  --color-brand-light: #060E3A;
+  --color-brand-surface: #0D1847;
+  --color-brand-warm: #E8654A;
+  --color-brand-warm-light: #3A1A1A;
 
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
 
-  /* Legacy aliases — keeps admin/landing pages functional */
-  --color-brand-secondary: #e8ede9;
-  --color-brand-accent: #3a7d5c;
-  --color-brand-accent-light: #dceee4;
-  --color-brand-tether: #3a7d5c;
-  --color-brand-tether-dark: #2d5a42;
-  --color-brand-glass: rgba(26, 58, 42, 0.06);
+  /* Legacy aliases */
+  --color-brand-secondary: #0D1847;
+  --color-brand-accent: #2ADFB7;
+  --color-brand-accent-light: #1A3A5C;
+  --color-brand-tether: #2ADFB7;
+  --color-brand-tether-dark: #1FC99F;
+  --color-brand-glass: rgba(1, 10, 49, 0.06);
 }
 
 /* Smooth font rendering */
@@ -74,12 +74,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--brand-border);
+  background: rgba(42, 223, 183, 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-muted);
+  background: rgba(42, 223, 183, 0.4);
 }
 
 /* Range slider styling */
@@ -95,7 +95,7 @@ input[type="range"] {
 input[type="range"]::-webkit-slider-track {
   height: 6px;
   border-radius: 3px;
-  background: var(--brand-subtle);
+  background: rgba(42, 223, 183, 0.15);
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -104,33 +104,33 @@ input[type="range"]::-webkit-slider-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--brand-primary);
-  border: 2px solid var(--brand-surface);
-  box-shadow: 0 1px 3px rgba(26, 58, 42, 0.25);
+  background: #2ADFB7;
+  border: 2px solid #010A31;
+  box-shadow: 0 1px 3px rgba(42, 223, 183, 0.3);
   margin-top: -6px;
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 4px rgba(26, 58, 42, 0.1), 0 1px 3px rgba(26, 58, 42, 0.25);
+  box-shadow: 0 0 0 4px rgba(42, 223, 183, 0.15), 0 1px 3px rgba(42, 223, 183, 0.3);
   transform: scale(1.08);
 }
 
 input[type="range"]:focus::-webkit-slider-thumb {
-  box-shadow: 0 0 0 4px rgba(26, 58, 42, 0.15), 0 1px 3px rgba(26, 58, 42, 0.25);
+  box-shadow: 0 0 0 4px rgba(42, 223, 183, 0.2), 0 1px 3px rgba(42, 223, 183, 0.3);
 }
 
 input[type="range"]::-moz-range-track {
   height: 6px;
   border-radius: 3px;
-  background: var(--brand-subtle);
+  background: rgba(42, 223, 183, 0.15);
 }
 
 input[type="range"]::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--brand-primary);
-  border: 2px solid var(--brand-surface);
-  box-shadow: 0 1px 3px rgba(26, 58, 42, 0.25);
+  background: #2ADFB7;
+  border: 2px solid #010A31;
+  box-shadow: 0 1px 3px rgba(42, 223, 183, 0.3);
 }

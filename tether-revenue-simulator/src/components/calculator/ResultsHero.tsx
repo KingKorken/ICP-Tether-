@@ -17,19 +17,17 @@ export function ResultsHero({ results, companyName }: ResultsHeroProps) {
   const flexPct = 100 - ecreditPct;
 
   return (
-    <div className="pb-8 border-b border-brand-border/60">
-      {/* Total Revenue — left-aligned, contextual output */}
+    <div className="pb-8 border-b border-brand-border">
       <p className="text-sm text-brand-muted mb-1">
-        Estimated annual revenue{companyName ? ` for ${companyName}` : ""}
+        Estimated annual revenue{companyName ? ` for ${companyName}` : ""} (based on historical data)
       </p>
-      <p className="text-4xl lg:text-5xl font-bold text-brand-revenue tracking-tight tabular-nums">
+      <p className="text-4xl lg:text-5xl font-bold text-brand-ecredit tracking-tight tabular-nums">
         {formatEur(results.totalCPO)}
       </p>
       <p className="text-sm text-brand-muted mt-1.5">
         {formatEur(results.perCharger)} per charger / year
       </p>
 
-      {/* Revenue Streams */}
       <div className="mt-6 grid grid-cols-2 gap-6">
         <div>
           <p className="text-xs font-medium text-brand-muted uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -47,25 +45,24 @@ export function ResultsHero({ results, companyName }: ResultsHeroProps) {
           <p className="text-xs font-medium text-brand-muted uppercase tracking-wider mb-1 flex items-center gap-1.5">
             Grid Flexibility
             <InfoTooltip
-              content="Grid flexibility revenue is derived from your charger capacity, flexible availability, and live market prices for frequency regulation services."
-              disclaimer="Market prices vary by month and country, based on real auction data from Nordic and European energy markets."
+              content="Grid flexibility revenue is derived from your charger capacity, flexible availability, and historical market prices for frequency regulation services from ENTSO-E."
+              disclaimer="Market prices vary by month and country, based on historical auction data from European energy markets."
             />
           </p>
-          <p className="text-xl font-semibold text-brand-revenue tabular-nums">
+          <p className="text-xl font-semibold text-brand-warm tabular-nums">
             {formatEur(results.flexCPO)}
           </p>
         </div>
       </div>
 
-      {/* Revenue Split Bar */}
       <div className="mt-4">
-        <div className="flex h-1.5 rounded-full overflow-hidden bg-brand-subtle">
+        <div className="flex h-1.5 rounded-full overflow-hidden bg-brand-surface">
           <div
             className="bg-brand-ecredit transition-all duration-500 ease-out"
             style={{ width: `${ecreditPct}%` }}
           />
           <div
-            className="bg-brand-revenue transition-all duration-500 ease-out"
+            className="bg-brand-warm transition-all duration-500 ease-out"
             style={{ width: `${flexPct}%` }}
           />
         </div>

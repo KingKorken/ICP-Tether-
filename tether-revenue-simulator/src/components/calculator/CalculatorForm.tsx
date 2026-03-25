@@ -13,44 +13,26 @@ import {
 interface CalculatorFormProps {
   state: SimulatorState;
   onChange: (field: keyof SimulatorState, value: SimulatorState[keyof SimulatorState]) => void;
+  onCalculate: () => void;
+  isCalculating: boolean;
 }
-
-// ---------------------------------------------------------------------------
-// Validation helper
-// ---------------------------------------------------------------------------
 
 function parseAndValidate(
   text: string,
   config: SliderConfig
 ): { valid: boolean; value?: number } {
-  // Strip commas, whitespace, and any trailing % sign
   const cleaned = text.replace(/[,%\s]/g, "");
   if (cleaned === "") return { valid: false };
-
   const num = parseFloat(cleaned);
   if (isNaN(num)) return { valid: false };
-
-  // Convert from display value to internal value
   const internal = config.fromDisplay(num);
-
-  // Range check (use small epsilon for floating-point comparison)
   if (internal < config.min - 1e-9 || internal > config.max + 1e-9)
     return { valid: false };
-
-  // Snap to nearest step
   const snapped =
-    Math.round((internal - config.min) / config.step) * config.step +
-    config.min;
-
-  // Clamp after snapping to avoid floating-point overshoot
+    Math.round((internal - config.min) / config.step) * config.step + config.min;
   const clamped = Math.min(config.max, Math.max(config.min, snapped));
-
   return { valid: true, value: clamped };
 }
-
-// ---------------------------------------------------------------------------
-// SliderWithInput — single slider + text input pair
-// ---------------------------------------------------------------------------
 
 function SliderWithInput({
   config,
@@ -59,16 +41,12 @@ function SliderWithInput({
 }: {
   config: SliderConfig;
   value: number;
-  onChange: (
-    field: keyof SimulatorState,
-    value: SimulatorState[keyof SimulatorState]
-  ) => void;
+  onChange: (field: keyof SimulatorState, value: SimulatorState[keyof SimulatorState]) => void;
 }) {
   const [localText, setLocalText] = useState(config.formatInput(value));
   const [isFocused, setIsFocused] = useState(false);
   const [isInvalid, setIsInvalid] = useState(false);
 
-  // Sync from parent state when not focused
   useEffect(() => {
     if (!isFocused) {
       setLocalText(config.formatInput(value));
@@ -80,7 +58,6 @@ function SliderWithInput({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const text = e.target.value;
       setLocalText(text);
-
       const result = parseAndValidate(text, config);
       if (result.valid && result.value !== undefined) {
         setIsInvalid(false);
@@ -99,7 +76,6 @@ function SliderWithInput({
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
-    // Revert to last valid value (parent state is always valid)
     setLocalText(config.formatInput(value));
     setIsInvalid(false);
   }, [config, value]);
@@ -110,19 +86,13 @@ function SliderWithInput({
         (e.target as HTMLInputElement).blur();
         return;
       }
-
-      // Arrow key increment/decrement
       if (e.key === "ArrowUp" || e.key === "ArrowDown") {
         e.preventDefault();
         const direction = e.key === "ArrowUp" ? 1 : -1;
         const newInternal = value + direction * config.step;
-        const clamped = Math.min(
-          config.max,
-          Math.max(config.min, newInternal)
-        );
+        const clamped = Math.min(config.max, Math.max(config.min, newInternal));
         const snapped =
-          Math.round((clamped - config.min) / config.step) * config.step +
-          config.min;
+          Math.round((clamped - config.min) / config.step) * config.step + config.min;
         onChange(config.field, Math.min(config.max, Math.max(config.min, snapped)));
       }
     },
@@ -131,17 +101,10 @@ function SliderWithInput({
 
   return (
     <div>
-      {/* Label row — unchanged */}
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-sm font-medium text-brand-text">
-          {config.label}
-        </label>
-        <span className="text-sm font-semibold text-brand-primary tabular-nums">
-          {config.format(value)}
-        </span>
+        <label className="text-sm font-medium text-brand-text">{config.label}</label>
+        <span className="text-sm font-semibold text-brand-ecredit tabular-nums">{config.format(value)}</span>
       </div>
-
-      {/* Slider + Input row */}
       <div className="flex items-center gap-3">
         <input
           type="range"
@@ -149,9 +112,7 @@ function SliderWithInput({
           max={config.max}
           step={config.step}
           value={value}
-          onChange={(e) =>
-            onChange(config.field, parseFloat(e.target.value))
-          }
+          onChange={(e) => onChange(config.field, parseFloat(e.target.value))}
           className="flex-1 min-w-0"
         />
         <div className="flex items-center gap-1 shrink-0">
@@ -165,21 +126,15 @@ function SliderWithInput({
             onFocus={handleFocus}
             aria-label={`${config.label} value`}
             aria-invalid={isInvalid || undefined}
-            className={`w-[100px] px-2 py-1.5 text-sm text-right tabular-nums bg-brand-light border rounded-lg transition-colors focus:outline-none focus:ring-2 ${
+            className={`w-[100px] px-2 py-1.5 text-sm text-right tabular-nums bg-brand-surface border rounded-lg transition-colors focus:outline-none focus:ring-2 text-brand-text ${
               isInvalid
                 ? "border-red-400 focus:ring-red-400/15 focus:border-red-400"
-                : "border-brand-border focus:ring-brand-primary/15 focus:border-brand-primary-light"
+                : "border-brand-border focus:ring-brand-ecredit/15 focus:border-brand-ecredit"
             }`}
           />
-          {config.suffix && (
-            <span className="text-sm text-brand-muted">
-              {config.suffix}
-            </span>
-          )}
+          {config.suffix && <span className="text-sm text-brand-muted">{config.suffix}</span>}
         </div>
       </div>
-
-      {/* Min/max labels — unchanged */}
       <div className="flex justify-between mt-0.5 text-xs text-brand-muted">
         <span>{config.format(config.min)}</span>
         <span>{config.format(config.max)}</span>
@@ -188,54 +143,39 @@ function SliderWithInput({
   );
 }
 
-// ---------------------------------------------------------------------------
-// CalculatorForm
-// ---------------------------------------------------------------------------
-
-export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
+export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: CalculatorFormProps) {
   return (
     <Card className="sticky top-16" padding="md">
-      <h2 className="text-base font-semibold text-brand-text mb-5">
-        Fleet Configuration
-      </h2>
+      <h2 className="text-base font-semibold text-brand-text mb-5">Fleet Configuration</h2>
 
       <div className="space-y-5">
-        {/* Country Selector */}
+        {/* Country */}
         <div>
-          <label className="block text-sm font-medium text-brand-text mb-1.5">
-            Market
-          </label>
+          <label className="block text-sm font-medium text-brand-text mb-1.5">Market</label>
           <select
             value={state.country}
             onChange={(e) => onChange("country", e.target.value)}
-            className="w-full px-3 py-2 bg-brand-light border border-brand-border rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary/15 focus:border-brand-primary-light transition-colors"
+            className="w-full px-3 py-2 bg-brand-surface border border-brand-border rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-ecredit/15 focus:border-brand-ecredit transition-colors"
           >
             {COUNTRY_OPTIONS.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
+              <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
         </div>
 
-        {/* Charger Type Toggle */}
+        {/* Charger Type */}
         <div>
-          <label className="block text-sm font-medium text-brand-text mb-1.5">
-            Charger Type
-          </label>
+          <label className="block text-sm font-medium text-brand-text mb-1.5">Charger Type</label>
           <div className="grid grid-cols-2 gap-1.5">
             {CHARGER_TYPES.map((type) => (
               <button
                 key={type}
                 onClick={() => onChange("type", type)}
-                className={`
-                  px-3 py-2 rounded-md text-sm font-medium transition-colors
-                  ${
-                    state.type === type
-                      ? "bg-brand-primary text-white"
-                      : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
-                  }
-                `}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  state.type === type
+                    ? "bg-brand-ecredit text-brand-dark"
+                    : "bg-brand-surface text-brand-muted hover:text-brand-text"
+                }`}
               >
                 {type === "public" ? "Public" : "Residential"}
               </button>
@@ -243,11 +183,9 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
           </div>
         </div>
 
-        {/* Power Level Selector */}
+        {/* Power */}
         <div>
-          <label className="block text-sm font-medium text-brand-text mb-1.5">
-            Charger Power
-          </label>
+          <label className="block text-sm font-medium text-brand-text mb-1.5">Charger Power</label>
           <div className="grid grid-cols-3 gap-1.5">
             {[
               { value: 0.0074, label: "7.4 kW" },
@@ -257,14 +195,11 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
               <button
                 key={power.value}
                 onClick={() => onChange("powerMW", power.value)}
-                className={`
-                  px-2 py-2 rounded-md text-sm font-medium transition-colors
-                  ${
-                    state.powerMW === power.value
-                      ? "bg-brand-primary text-white"
-                      : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
-                  }
-                `}
+                className={`px-2 py-2 rounded-md text-sm font-medium transition-colors ${
+                  state.powerMW === power.value
+                    ? "bg-brand-ecredit text-brand-dark"
+                    : "bg-brand-surface text-brand-muted hover:text-brand-text"
+                }`}
               >
                 {power.label}
               </button>
@@ -272,7 +207,7 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
           </div>
         </div>
 
-        {/* Sliders with Input Fields */}
+        {/* Sliders */}
         {SLIDER_CONFIGS.map((config) => (
           <SliderWithInput
             key={config.field}
@@ -282,30 +217,39 @@ export function CalculatorForm({ state, onChange }: CalculatorFormProps) {
           />
         ))}
 
-        {/* Horizon Toggle */}
+        {/* Horizon — 3 / 6 / 12 months (historical) */}
         <div>
-          <label className="block text-sm font-medium text-brand-text mb-1.5">
-            Projection Horizon
-          </label>
-          <div className="grid grid-cols-2 gap-1.5">
-            {[12, 24].map((months) => (
+          <label className="block text-sm font-medium text-brand-text mb-1.5">Historical View</label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[3, 6, 12].map((months) => (
               <button
                 key={months}
                 onClick={() => onChange("horizonMonths", months)}
-                className={`
-                  px-3 py-2 rounded-md text-sm font-medium transition-colors
-                  ${
-                    state.horizonMonths === months
-                      ? "bg-brand-primary text-white"
-                      : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
-                  }
-                `}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  state.horizonMonths === months
+                    ? "bg-brand-ecredit text-brand-dark"
+                    : "bg-brand-surface text-brand-muted hover:text-brand-text"
+                }`}
               >
-                {months} months
+                {months} mo
               </button>
             ))}
           </div>
+          <p className="text-xs text-brand-muted/60 mt-1">Based on historical prices, not a forecast</p>
         </div>
+
+        {/* Calculate Button */}
+        <button
+          onClick={onCalculate}
+          disabled={isCalculating}
+          className={`w-full py-3 px-4 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
+            isCalculating
+              ? "bg-brand-ecredit/30 text-brand-muted cursor-wait"
+              : "bg-brand-ecredit text-brand-dark hover:brightness-110 hover:shadow-lg hover:shadow-brand-ecredit/20 active:scale-[0.98]"
+          }`}
+        >
+          {isCalculating ? "Calculating..." : "Calculate Revenue"}
+        </button>
       </div>
     </Card>
   );
