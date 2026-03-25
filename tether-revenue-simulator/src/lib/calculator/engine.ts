@@ -1,8 +1,8 @@
 /**
  * Tether Revenue Calculation Engine
  *
- * Supports multi-configuration with per-config location (country).
- * Each ChargerGroup uses its own country's market data for pricing.
+ * Always computes all 12 months. Timeframe (3/6/12) is a VIEW-LAYER slice.
+ * Supports multi-config with per-config location (country).
  */
 
 import { MARKET_DATA } from "./market-data";
@@ -22,29 +22,29 @@ import type {
 /** Fixed Y-axis ceiling for monthly charts (EUR) */
 export const Y_AXIS_CEILING = 25000;
 
+/** Fixed Y-axis ceiling for cumulative chart (EUR) */
+export const Y_AXIS_CEILING_CUMULATIVE = 30000;
+
 // ---------------------------------------------------------------------------
-// Single-config calculation (backward compatible)
+// Single-config (backward compat)
 // ---------------------------------------------------------------------------
 
 export function calculateRevenue(state: SimulatorState): CalculationResult {
-  return calculateMultiRevenue(
-    [
-      {
-        id: 0,
-        chargers: state.chargers,
-        powerMW: state.powerMW,
-        utilization: state.utilization,
-        flexPotential: state.flexPotential,
-        type: state.type,
-        country: state.country,
-      },
-    ],
-    state.horizonMonths
-  );
+  return calculateMultiRevenue([
+    {
+      id: 0,
+      chargers: state.chargers,
+      powerMW: state.powerMW,
+      utilization: state.utilization,
+      flexPotential: state.flexPotential,
+      type: state.type,
+      country: state.country,
+    },
+  ]);
 }
 
 // ---------------------------------------------------------------------------
-// Per-config annual revenue (for sidebar preview)
+// Per-config annual revenue (sidebar preview)
 // ---------------------------------------------------------------------------
 
 export function calculateGroupAnnualRevenue(group: ChargerGroup): number {
@@ -61,7 +61,6 @@ export function calculateGroupAnnualRevenue(group: ChargerGroup): number {
 
   let annualEcredits = 0;
   let annualFlex = 0;
-
   for (let mi = 0; mi < 12; mi++) {
     annualEcredits += monthlyEcreditCPO * market.resSeasonalFactor[mi];
     const mwAvailable = chargers * util * powerMW * flex;
@@ -74,29 +73,24 @@ export function calculateGroupAnnualRevenue(group: ChargerGroup): number {
       mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours
     ) * CPO_SHARE;
   }
-
   return annualEcredits + annualFlex;
 }
 
 // ---------------------------------------------------------------------------
-// Multi-config aggregated calculation (per-config country)
+// Multi-config — ALWAYS produces 12 months. Slicing is done at the view layer.
 // ---------------------------------------------------------------------------
 
 export function calculateMultiRevenue(
-  groups: ChargerGroup[],
-  horizonMonths: number
+  groups: ChargerGroup[]
 ): CalculationResult {
-  const totalMonths = horizonMonths;
-  const startMonth = 12 - totalMonths;
-
-  const monthlyEcreditsAgg = new Array<number>(totalMonths).fill(0);
-  const monthlyFlexAgg = new Array<number>(totalMonths).fill(0);
+  const monthlyEcreditsAgg = new Array<number>(12).fill(0);
+  const monthlyFlexAgg = new Array<number>(12).fill(0);
   let annualEcredits = 0;
   let annualFlex = 0;
   let totalChargers = 0;
 
   for (const group of groups) {
-    const market = MARKET_DATA[group.country]; // Per-config country
+    const market = MARKET_DATA[group.country];
     const profile = PROFILES[group.type];
     const { chargers, powerMW, utilization: util, flexPotential: flex } = group;
     totalChargers += chargers;
@@ -108,53 +102,44 @@ export function calculateMultiRevenue(
     const ecreditCPO = annualKWh * effectiveRate * CPO_SHARE;
     const monthlyEcreditCPO = ecreditCPO / 12;
 
-    // Full-year annual
     for (let mi = 0; mi < 12; mi++) {
-      annualEcredits += monthlyEcreditCPO * market.resSeasonalFactor[mi];
-      const mwAvailable = chargers * util * powerMW * flex;
-      const accessRatio = profile.accessibleHoursDay / 24;
-      const accessibleHours = HOURS_PER_MONTH[mi] * accessRatio;
-      annualFlex += (
-        mwAvailable * profile.mfrrUp * market.mfrr_up[mi] * accessibleHours +
-        mwAvailable * profile.mfrrDown * market.mfrr_down[mi] * accessibleHours +
-        mwAvailable * profile.fcrUp * market.fcrd_up[mi] * accessibleHours +
-        mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours
-      ) * CPO_SHARE;
-    }
+      const ecMo = monthlyEcreditCPO * market.resSeasonalFactor[mi];
+      monthlyEcreditsAgg[mi] += ecMo;
+      annualEcredits += ecMo;
 
-    // Visible-window monthly
-    for (let m = 0; m < totalMonths; m++) {
-      const mi = startMonth + m;
-      monthlyEcreditsAgg[m] += monthlyEcreditCPO * market.resSeasonalFactor[mi];
       const mwAvailable = chargers * util * powerMW * flex;
       const accessRatio = profile.accessibleHoursDay / 24;
       const accessibleHours = HOURS_PER_MONTH[mi] * accessRatio;
-      monthlyFlexAgg[m] += (
+      const flexMo = (
         mwAvailable * profile.mfrrUp * market.mfrr_up[mi] * accessibleHours +
         mwAvailable * profile.mfrrDown * market.mfrr_down[mi] * accessibleHours +
         mwAvailable * profile.fcrUp * market.fcrd_up[mi] * accessibleHours +
         mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours
       ) * CPO_SHARE;
+      monthlyFlexAgg[mi] += flexMo;
+      annualFlex += flexMo;
     }
   }
 
   const totalCPO = annualEcredits + annualFlex;
 
+  // All 12 months of monthly data
   const monthly = monthlyFlexAgg.map((flexValue, i) => ({
-    month: MONTH_LABELS[startMonth + i],
+    month: MONTH_LABELS[i],
     ecredits: monthlyEcreditsAgg[i],
     flexibility: flexValue,
     combined: flexValue + monthlyEcreditsAgg[i],
   }));
 
+  // All 12 months of cumulative data
   const cumulative: CalculationResult["cumulative"] = [];
   let runCombined = 0;
   let runEcredits = 0;
-  for (let m = 0; m < totalMonths; m++) {
+  for (let m = 0; m < 12; m++) {
     runCombined += monthlyFlexAgg[m] + monthlyEcreditsAgg[m];
     runEcredits += monthlyEcreditsAgg[m];
     cumulative.push({
-      month: MONTH_LABELS[startMonth + m],
+      month: MONTH_LABELS[m],
       cumulativeCombined: runCombined,
       cumulativeEcredits: runEcredits,
     });
@@ -167,7 +152,7 @@ export function calculateMultiRevenue(
     perCharger: totalChargers > 0 ? totalCPO / totalChargers : 0,
     monthly,
     cumulative,
-    totalMonths,
+    totalMonths: 12,
     totalChargers,
   };
 }
