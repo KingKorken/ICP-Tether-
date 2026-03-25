@@ -29,6 +29,7 @@ export interface ChargerGroup {
   powerMW: number;
   utilization: number;
   flexPotential: number;
+  type: ChargerType;
 }
 
 /**
@@ -108,6 +109,7 @@ export const DEFAULT_CHARGER_GROUP: ChargerGroup = {
   powerMW: 0.011,
   utilization: 0.15,
   flexPotential: 0.50,
+  type: "public",
 };
 
 // =============================================
