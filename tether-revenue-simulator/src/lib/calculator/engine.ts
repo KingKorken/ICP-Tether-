@@ -1,108 +1,145 @@
 /**
  * Tether Revenue Calculation Engine
  *
- * Ported from the HTML prototype (lines 1296-1423).
- * Pure function — no DOM dependencies, no side effects.
- *
- * Two revenue streams:
- * 1. E-credits: Based on energy consumption × avoided CO2 × market factors
- * 2. Grid Flexibility: Based on available capacity × market prices (mFRR + FCR-D)
+ * Always computes all 12 months. Timeframe (3/6/12) is a VIEW-LAYER slice.
+ * Supports multi-config with per-config location (country).
  */
 
 import { MARKET_DATA } from "./market-data";
 import {
   PROFILES,
   ECREDIT,
-  RES_SEASONAL,
   HOURS_PER_MONTH,
   CPO_SHARE,
   MONTH_LABELS,
 } from "./constants";
-import type { SimulatorState, CalculationResult } from "./types";
+import type {
+  SimulatorState,
+  CalculationResult,
+  ChargerGroup,
+} from "./types";
 
-/**
- * Calculate revenue projections for the given simulator state.
- * This is the core calculation — must complete in <16ms for 60fps.
- */
+/** Fixed Y-axis ceiling for monthly charts (EUR) */
+export const Y_AXIS_CEILING = 25000;
+
+/** Fixed Y-axis ceiling for cumulative chart (EUR) */
+export const Y_AXIS_CEILING_CUMULATIVE = 30000;
+
+// ---------------------------------------------------------------------------
+// Single-config (backward compat)
+// ---------------------------------------------------------------------------
+
 export function calculateRevenue(state: SimulatorState): CalculationResult {
-  const profile = PROFILES[state.type];
-  const market = MARKET_DATA[state.country];
-  const { chargers, powerMW, utilization: util, flexPotential: flex } = state;
-  const totalMonths = state.horizonMonths;
+  return calculateMultiRevenue([
+    {
+      id: 0,
+      chargers: state.chargers,
+      powerMW: state.powerMW,
+      utilization: state.utilization,
+      flexPotential: state.flexPotential,
+      type: state.type,
+      country: state.country,
+    },
+  ]);
+}
 
-  // --- E-Credits Calculation ---
+// ---------------------------------------------------------------------------
+// Per-config annual revenue (sidebar preview)
+// ---------------------------------------------------------------------------
+
+export function calculateGroupAnnualRevenue(group: ChargerGroup): number {
+  const market = MARKET_DATA[group.country];
+  const profile = PROFILES[group.type];
+  const { chargers, powerMW, utilization: util, flexPotential: flex } = group;
+
   const power_kW = powerMW * 1000;
-  const annualKWh =
-    chargers * power_kW * util * profile.accessibleHoursDay * 365;
+  const annualKWh = chargers * power_kW * util * profile.accessibleHoursDay * 365;
   const avoidedCO2_kg = ECREDIT.avoidedCO2_g / 1000;
-  const effectiveRate =
-    market.resE_pct *
-    ECREDIT.multiplier *
-    avoidedCO2_kg *
-    ECREDIT.co2Price *
-    ECREDIT.marketDiscount;
-  const ecreditTotal = annualKWh * effectiveRate;
-  const ecreditCPO = ecreditTotal * CPO_SHARE;
+  const effectiveRate = market.resE_pct * ECREDIT.multiplier * avoidedCO2_kg * ECREDIT.co2Price * ECREDIT.marketDiscount;
+  const ecreditCPO = annualKWh * effectiveRate * CPO_SHARE;
   const monthlyEcreditCPO = ecreditCPO / 12;
 
-  // --- Monthly Calculations ---
-  const monthlyEcredits: number[] = [];
-  const monthlyFlex: number[] = [];
-
-  for (let m = 0; m < totalMonths; m++) {
-    const mi = m % 12; // Month index (wraps for 24-month horizon)
-
-    // E-credits with seasonal adjustment
-    monthlyEcredits.push(monthlyEcreditCPO * RES_SEASONAL[mi]);
-
-    // Grid Flexibility
+  let annualEcredits = 0;
+  let annualFlex = 0;
+  for (let mi = 0; mi < 12; mi++) {
+    annualEcredits += monthlyEcreditCPO * market.resSeasonalFactor[mi];
     const mwAvailable = chargers * util * powerMW * flex;
     const accessRatio = profile.accessibleHoursDay / 24;
     const accessibleHours = HOURS_PER_MONTH[mi] * accessRatio;
+    annualFlex += (
+      mwAvailable * profile.mfrrUp * market.mfrr_up[mi] * accessibleHours +
+      mwAvailable * profile.mfrrDown * market.mfrr_down[mi] * accessibleHours +
+      mwAvailable * profile.fcrUp * market.fcrd_up[mi] * accessibleHours +
+      mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours
+    ) * CPO_SHARE;
+  }
+  return annualEcredits + annualFlex;
+}
 
-    const mfrrUpRev =
-      mwAvailable * profile.mfrrUp * market.mfrr_up[mi] * accessibleHours;
-    const mfrrDownRev =
-      mwAvailable * profile.mfrrDown * market.mfrr_down[mi] * accessibleHours;
-    const fcrUpRev =
-      mwAvailable * profile.fcrUp * market.fcrd_up[mi] * accessibleHours;
-    const fcrDownRev =
-      mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours;
+// ---------------------------------------------------------------------------
+// Multi-config — ALWAYS produces 12 months. Slicing is done at the view layer.
+// ---------------------------------------------------------------------------
 
-    monthlyFlex.push(
-      (mfrrUpRev + mfrrDownRev + fcrUpRev + fcrDownRev) * CPO_SHARE
-    );
+export function calculateMultiRevenue(
+  groups: ChargerGroup[]
+): CalculationResult {
+  const monthlyEcreditsAgg = new Array<number>(12).fill(0);
+  const monthlyFlexAgg = new Array<number>(12).fill(0);
+  let annualEcredits = 0;
+  let annualFlex = 0;
+  let totalChargers = 0;
+
+  for (const group of groups) {
+    const market = MARKET_DATA[group.country];
+    const profile = PROFILES[group.type];
+    const { chargers, powerMW, utilization: util, flexPotential: flex } = group;
+    totalChargers += chargers;
+
+    const power_kW = powerMW * 1000;
+    const annualKWh = chargers * power_kW * util * profile.accessibleHoursDay * 365;
+    const avoidedCO2_kg = ECREDIT.avoidedCO2_g / 1000;
+    const effectiveRate = market.resE_pct * ECREDIT.multiplier * avoidedCO2_kg * ECREDIT.co2Price * ECREDIT.marketDiscount;
+    const ecreditCPO = annualKWh * effectiveRate * CPO_SHARE;
+    const monthlyEcreditCPO = ecreditCPO / 12;
+
+    for (let mi = 0; mi < 12; mi++) {
+      const ecMo = monthlyEcreditCPO * market.resSeasonalFactor[mi];
+      monthlyEcreditsAgg[mi] += ecMo;
+      annualEcredits += ecMo;
+
+      const mwAvailable = chargers * util * powerMW * flex;
+      const accessRatio = profile.accessibleHoursDay / 24;
+      const accessibleHours = HOURS_PER_MONTH[mi] * accessRatio;
+      const flexMo = (
+        mwAvailable * profile.mfrrUp * market.mfrr_up[mi] * accessibleHours +
+        mwAvailable * profile.mfrrDown * market.mfrr_down[mi] * accessibleHours +
+        mwAvailable * profile.fcrUp * market.fcrd_up[mi] * accessibleHours +
+        mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours
+      ) * CPO_SHARE;
+      monthlyFlexAgg[mi] += flexMo;
+      annualFlex += flexMo;
+    }
   }
 
-  // --- Aggregate Annual Values ---
-  const totalEcreditsCPO = monthlyEcredits
-    .slice(0, 12)
-    .reduce((a, b) => a + b, 0);
-  const totalFlex = monthlyFlex.slice(0, 12).reduce((a, b) => a + b, 0);
-  const totalCPO = totalEcreditsCPO + totalFlex;
+  const totalCPO = annualEcredits + annualFlex;
 
-  // --- Monthly Breakdown (for seasonal chart) ---
-  const monthly = monthlyFlex.slice(0, 12).map((flexValue, i) => ({
+  // All 12 months of monthly data
+  const monthly = monthlyFlexAgg.map((flexValue, i) => ({
     month: MONTH_LABELS[i],
-    ecredits: monthlyEcredits[i],
+    ecredits: monthlyEcreditsAgg[i],
     flexibility: flexValue,
-    combined: flexValue + monthlyEcredits[i],
+    combined: flexValue + monthlyEcreditsAgg[i],
   }));
 
-  // --- Cumulative Data (for timeline chart) ---
+  // All 12 months of cumulative data
   const cumulative: CalculationResult["cumulative"] = [];
   let runCombined = 0;
   let runEcredits = 0;
-
-  for (let m = 0; m < totalMonths; m++) {
-    const combined = monthlyFlex[m] + monthlyEcredits[m];
-    runCombined += combined;
-    runEcredits += monthlyEcredits[m];
+  for (let m = 0; m < 12; m++) {
+    runCombined += monthlyFlexAgg[m] + monthlyEcreditsAgg[m];
+    runEcredits += monthlyEcreditsAgg[m];
     cumulative.push({
-      month:
-        totalMonths <= 12
-          ? MONTH_LABELS[m]
-          : `M${m + 1}`,
+      month: MONTH_LABELS[m],
       cumulativeCombined: runCombined,
       cumulativeEcredits: runEcredits,
     });
@@ -110,11 +147,12 @@ export function calculateRevenue(state: SimulatorState): CalculationResult {
 
   return {
     totalCPO,
-    ecreditCPO: totalEcreditsCPO,
-    flexCPO: totalFlex,
-    perCharger: chargers > 0 ? totalCPO / chargers : 0,
+    ecreditCPO: annualEcredits,
+    flexCPO: annualFlex,
+    perCharger: totalChargers > 0 ? totalCPO / totalChargers : 0,
     monthly,
     cumulative,
-    totalMonths,
+    totalMonths: 12,
+    totalChargers,
   };
 }

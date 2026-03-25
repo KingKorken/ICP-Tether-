@@ -14,14 +14,6 @@ export const MONTH_LABELS = [
 ] as const;
 
 /**
- * Short month labels for 24-month timeline.
- */
-export const MONTH_LABELS_24 = [
-  "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
-  "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
-] as const;
-
-/**
  * Charger type profiles with default operating parameters.
  */
 export const PROFILES = {
@@ -49,23 +41,11 @@ export const PROFILES = {
  * E-credit calculation constants.
  */
 export const ECREDIT = {
-  /** Multiplier for e-credit calculation */
   multiplier: 4,
-  /** Avoided CO2 in grams per kWh */
   avoidedCO2_g: 323.4,
-  /** CO2 price in EUR per kg */
   co2Price: 0.34,
-  /** Market discount factor */
   marketDiscount: 0.035,
 } as const;
-
-/**
- * Residential seasonal adjustment factors (monthly).
- */
-export const RES_SEASONAL = [
-  0.85, 0.88, 0.95, 1.05, 1.10, 1.12,
-  1.08, 1.02, 0.98, 0.92, 0.88, 0.87,
-] as const;
 
 /**
  * CPO's revenue share percentage.

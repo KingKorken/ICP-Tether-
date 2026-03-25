@@ -13,7 +13,7 @@ export default function DemoPage() {
       tokenId="demo-token"
       leadId="demo-lead"
       initialState={{ ...DEFAULT_STATE, company: "Demo Company" }}
-      hasExistingSnapshot={false}
+      hasExistingSnapshot={true}
     />
   );
 }

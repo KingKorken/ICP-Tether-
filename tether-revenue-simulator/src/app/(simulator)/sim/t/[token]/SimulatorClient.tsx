@@ -1,16 +1,22 @@
 "use client";
 
-import { useState, useMemo, useDeferredValue, useEffect, useCallback, useRef } from "react";
-import { calculateRevenue } from "@/lib/calculator/engine";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { calculateMultiRevenue } from "@/lib/calculator/engine";
 import { CalculatorForm } from "@/components/calculator/CalculatorForm";
 import { ResultsHero } from "@/components/calculator/ResultsHero";
 import { SeasonalChart } from "@/components/calculator/SeasonalChart";
 import { CumulativeTimeline } from "@/components/calculator/CumulativeTimeline";
 import { LossCounter } from "@/components/calculator/LossCounter";
-import { ContactSalesCTA } from "@/components/calculator/ContactSalesCTA";
 import { startBatcher, stopBatcher, trackEvent } from "@/lib/tracking/tracker";
 import { EVENTS } from "@/lib/tracking/events";
-import type { SimulatorState } from "@/lib/calculator/types";
+import type { SimulatorState, ChargerGroup } from "@/lib/calculator/types";
+
+/* MethodologyPanel — hidden (Black Box). Code preserved:
+   import { MethodologyPanel } from "@/components/calculator/MethodologyPanel";
+*/
+/* ContactSalesCTA — hidden. Code preserved:
+   import { ContactSalesCTA } from "@/components/calculator/ContactSalesCTA";
+*/
 
 interface SimulatorClientProps {
   accessToken: string;
@@ -20,7 +26,7 @@ interface SimulatorClientProps {
   hasExistingSnapshot: boolean;
 }
 
-type LoadingState = "loading" | "ready" | "error";
+type CalcState = "idle" | "calculating" | "done";
 
 export function SimulatorClient({
   accessToken,
@@ -29,250 +35,156 @@ export function SimulatorClient({
   initialState,
   hasExistingSnapshot,
 }: SimulatorClientProps) {
-  const [inputs, setInputs] = useState<SimulatorState>(initialState);
-  const [loadingState, setLoadingState] = useState<LoadingState>(
-    hasExistingSnapshot ? "ready" : "ready"
-  );
-  const [isSaving, setIsSaving] = useState(false);
-  const saveVersionRef = useRef(0);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [configs, setConfigs] = useState<ChargerGroup[]>([{
+    id: 0,
+    chargers: initialState.chargers,
+    powerMW: initialState.powerMW,
+    utilization: initialState.utilization,
+    flexPotential: initialState.flexPotential,
+    type: initialState.type,
+    country: initialState.country,
+  }]);
+
+  // Timeframe is a VIEW-LAYER control — changes slicing instantly, no recalc needed
+  const [timeframe, setTimeframe] = useState(initialState.horizonMonths as 3 | 6 | 12);
+  const [companyName] = useState(initialState.company);
+  const [calcState, setCalcState] = useState<CalcState>(hasExistingSnapshot ? "done" : "idle");
   const sessionIdRef = useRef<string>("");
 
-  // Use deferred value for smooth slider interaction
-  const deferredInputs = useDeferredValue(inputs);
-  const results = useMemo(
-    () => calculateRevenue(deferredInputs),
-    [deferredInputs]
+  // Committed configs (only updates on Calculate press)
+  const [committedConfigs, setCommittedConfigs] = useState<ChargerGroup[] | null>(
+    hasExistingSnapshot ? [{
+      id: 0, chargers: initialState.chargers, powerMW: initialState.powerMW,
+      utilization: initialState.utilization, flexPotential: initialState.flexPotential,
+      type: initialState.type, country: initialState.country,
+    }] : null
   );
 
-  // Initialize session and event batcher
+  // Engine always returns 12 months
+  const fullResults = useMemo(() => {
+    if (!committedConfigs || committedConfigs.length === 0) return null;
+    return calculateMultiRevenue(committedConfigs);
+  }, [committedConfigs]);
+
+  // Slice for the current timeframe — this is what makes the zoom instant
+  const visibleMonthly = useMemo(
+    () => fullResults?.monthly.slice(-timeframe) ?? [],
+    [fullResults, timeframe]
+  );
+  const visibleCumulative = useMemo(() => {
+    if (!fullResults) return [];
+    // Re-accumulate from the sliced window so cumulative starts at 0
+    const sliced = fullResults.monthly.slice(-timeframe);
+    let run = 0;
+    let runEc = 0;
+    return sliced.map((m) => {
+      run += m.combined;
+      runEc += m.ecredits;
+      return { month: m.month, cumulativeCombined: run, cumulativeEcredits: runEc };
+    });
+  }, [fullResults, timeframe]);
+
+  void accessToken;
+  void leadId;
+
+  // Session init
   useEffect(() => {
-    const initSession = async () => {
+    (async () => {
       try {
         const res = await fetch("/api/events/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            events: [
-              {
-                event_type: EVENTS.SESSION_STARTED,
-                payload: {
-                  referrer: document.referrer || "",
-                  device_type: getDeviceType(),
-                },
-                client_sequence: 0,
-                client_timestamp: new Date().toISOString(),
-              },
-            ],
-            session_id: crypto.randomUUID(),
-            token_id: tokenId,
+            events: [{ event_type: EVENTS.SESSION_STARTED, payload: { referrer: document.referrer || "", device_type: getDeviceType() }, client_sequence: 0, client_timestamp: new Date().toISOString() }],
+            session_id: crypto.randomUUID(), token_id: tokenId,
           }),
         });
-
-        if (res.ok) {
-          sessionIdRef.current = crypto.randomUUID();
-          startBatcher({
-            tokenId,
-            sessionId: sessionIdRef.current,
-          });
-        }
-      } catch {
-        // Event tracking failure is silent
-      }
-    };
-
-    initSession();
-    setLoadingState("ready");
-
-    return () => {
-      stopBatcher();
-    };
+        if (res.ok) { sessionIdRef.current = crypto.randomUUID(); startBatcher({ tokenId, sessionId: sessionIdRef.current }); }
+      } catch { /* Silent */ }
+    })();
+    return () => { stopBatcher(); };
   }, [tokenId]);
 
-  // Debounced save (2 second delay)
-  const debouncedSave = useCallback(
-    (state: SimulatorState) => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      saveTimeoutRef.current = setTimeout(async () => {
-        saveVersionRef.current += 1;
-        const version = saveVersionRef.current;
-        setIsSaving(true);
-
-        try {
-          const result = calculateRevenue(state);
-          await fetch("/api/events/track", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              events: [
-                {
-                  event_type: EVENTS.SNAPSHOT_SAVED,
-                  payload: { snapshot_id: crypto.randomUUID() },
-                  client_sequence: version,
-                  client_timestamp: new Date().toISOString(),
-                },
-              ],
-              session_id: sessionIdRef.current || crypto.randomUUID(),
-              token_id: tokenId,
-            }),
-          });
-
-          void result;
-        } catch {
-          // Silent failure
-        } finally {
-          setIsSaving(false);
-        }
-      }, 2000);
-    },
-    [tokenId]
-  );
-
-  // Handle input changes
-  const handleInputChange = useCallback(
-    (field: keyof SimulatorState, value: SimulatorState[keyof SimulatorState]) => {
-      setInputs((prev) => {
-        const oldValue = String(prev[field]);
-        const newState = { ...prev, [field]: value };
-
-        trackEvent({
-          type: EVENTS.INPUT_CHANGED,
-          payload: {
-            field: String(field),
-            old_value: oldValue,
-            new_value: String(value),
-          },
-        });
-
-        debouncedSave(newState);
-
-        return newState;
-      });
-    },
-    [debouncedSave]
-  );
-
-  // Flush pending saves on unmount or navigation
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  if (loadingState === "loading") {
-    return (
-      <div className="min-h-screen bg-brand-light flex items-center justify-center">
-        <div>
-          <div className="w-10 h-10 bg-brand-primary/10 rounded-full flex items-center justify-center mb-3 animate-pulse">
-            <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-          <p className="text-brand-muted text-sm">Loading your simulator...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadingState === "error") {
-    return (
-      <div className="min-h-screen bg-brand-light flex items-center justify-center">
-        <div className="max-w-md">
-          <p className="text-brand-warm text-base font-semibold mb-1">
-            Something went wrong
-          </p>
-          <p className="text-brand-muted text-sm">
-            We couldn&apos;t load your saved data. Please refresh the page.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Calculate with 1-3s delay
+  const handleCalculate = useCallback(() => {
+    if (configs.length === 0) return;
+    setCalcState("calculating");
+    setTimeout(() => {
+      setCommittedConfigs([...configs]);
+      setCalcState("done");
+      try { trackEvent({ type: EVENTS.SNAPSHOT_SAVED, payload: { snapshot_id: crypto.randomUUID() } }); } catch { /* Silent */ }
+    }, 1000 + Math.random() * 2000);
+  }, [configs]);
 
   return (
-    <div className="min-h-screen bg-brand-light">
-      {/* Header */}
-      <header className="bg-brand-dark py-3 px-6 sticky top-0 z-50">
+    <div className="min-h-screen bg-brand-dark">
+      <header className="bg-brand-primary-light/50 border-b border-brand-border py-3 px-6 sticky top-0 z-50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="text-lg font-semibold text-white tracking-tight">Tether</span>
             <span className="text-brand-muted text-xs font-medium tracking-wide uppercase">Revenue Simulator</span>
           </div>
           <div className="flex items-center gap-3">
-            {isSaving && (
-              <span className="text-xs text-brand-muted flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 bg-brand-ecredit rounded-full animate-pulse" />
-                Saving
+            {calcState === "calculating" && (
+              <span className="text-xs text-brand-ecredit flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-brand-ecredit rounded-full animate-pulse" />
+                Recalculating&hellip;
               </span>
             )}
-            {inputs.company && (
-              <span className="text-sm text-brand-muted font-medium">
-                {inputs.company}
-              </span>
-            )}
+            {companyName && <span className="text-sm text-brand-muted font-medium">{companyName}</span>}
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6">
-        {/* Configuration + Results — side by side */}
         <div className="grid lg:grid-cols-12 gap-6 pt-8">
-          {/* Left Column: Form (sticky) */}
           <div className="lg:col-span-4">
             <CalculatorForm
-              state={inputs}
-              onChange={handleInputChange}
+              configs={configs}
+              horizonMonths={timeframe}
+              onConfigsChange={setConfigs}
+              onHorizonChange={(m) => setTimeframe(m as 3 | 6 | 12)}
+              onCalculate={handleCalculate}
+              isCalculating={calcState === "calculating"}
             />
           </div>
 
-          {/* Right Column: Results output + Charts */}
-          <div className="lg:col-span-8">
-            <ResultsHero results={results} companyName={inputs.company} />
-
-            <div className="mt-10 space-y-10">
-              <SeasonalChart data={results.monthly} />
-              <CumulativeTimeline data={results.cumulative} totalMonths={results.totalMonths} />
-            </div>
+          <div className={`lg:col-span-8 transition-all duration-300 ${calcState === "calculating" ? "opacity-40 blur-sm" : ""}`}>
+            {fullResults ? (
+              <>
+                <ResultsHero results={fullResults} companyName={companyName} />
+                <div className="mt-10 space-y-10">
+                  <SeasonalChart data={visibleMonthly} />
+                  <CumulativeTimeline data={visibleCumulative} totalMonths={timeframe} />
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <p className="text-brand-muted text-lg mb-2">Configure your fleet and hit Calculate</p>
+                  <p className="text-brand-muted/60 text-sm">Revenue estimates powered by Tether</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Loss Counter — generous section break */}
-        <div className="mt-16">
-          <LossCounter
-            cumulativeTotal={
-              results.cumulative[results.cumulative.length - 1]?.cumulativeCombined ?? 0
-            }
-            totalMonths={results.totalMonths}
-            companyName={inputs.company}
-          />
-        </div>
-
-        {/* Contact Sales CTA */}
-        <div className="mt-6 mb-16">
-          <ContactSalesCTA
-            tokenId={tokenId}
-            leadId={leadId}
-            accessToken={accessToken}
-          />
-        </div>
+        {fullResults && (
+          <div className="mt-16">
+            <LossCounter
+              cumulativeTotal={visibleCumulative[visibleCumulative.length - 1]?.cumulativeCombined ?? 0}
+              totalMonths={timeframe}
+              companyName={companyName}
+            />
+          </div>
+        )}
+        <div className="mb-16" />
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-brand-border/60 py-6 px-6">
+      <footer className="border-t border-brand-border py-6 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-brand-muted">
           <span>&copy; {new Date().getFullYear()} Tether EV</span>
-          <div className="flex items-center gap-4">
-            <a href="/privacy" className="hover:text-brand-text transition-colors">
-              Privacy
-            </a>
-            <a href="/terms" className="hover:text-brand-text transition-colors">
-              Terms
-            </a>
-          </div>
+          <span className="text-brand-muted/40">Powered by Tether</span>
         </div>
       </footer>
     </div>
