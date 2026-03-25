@@ -30,6 +30,7 @@ export interface ChargerGroup {
   utilization: number;
   flexPotential: number;
   type: ChargerType;
+  country: Country;
 }
 
 /**
@@ -110,6 +111,7 @@ export const DEFAULT_CHARGER_GROUP: ChargerGroup = {
   utilization: 0.15,
   flexPotential: 0.50,
   type: "public",
+  country: "sweden",
 };
 
 // =============================================
