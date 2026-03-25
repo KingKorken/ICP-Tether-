@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/shared/Card";
 import { COUNTRY_OPTIONS } from "@/lib/calculator/market-data";
@@ -26,7 +26,7 @@ interface CalculatorFormProps {
 }
 
 // ---------------------------------------------------------------------------
-// Power helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
 const POWER_OPTS = [
@@ -44,21 +44,144 @@ function countryLabel(c: Country): string {
 }
 
 // ---------------------------------------------------------------------------
-// Config Editor (inline)
+// Dual-Input Slider — range + synced text input with validation
+// ---------------------------------------------------------------------------
+
+function DualSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  displayFn,
+  parseFn,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  /** Format the internal value for display in the text input (e.g. 0.15 → "15") */
+  displayFn: (v: number) => string;
+  /** Parse the text input back to internal value (e.g. "15" → 0.15). Return NaN for invalid. */
+  parseFn: (text: string) => number;
+  suffix?: string;
+  onChange: (v: number) => void;
+}) {
+  const [textValue, setTextValue] = useState(displayFn(value));
+  const [isFocused, setIsFocused] = useState(false);
+  const [isInvalid, setIsInvalid] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync text from external value changes (when not focused)
+  useEffect(() => {
+    if (!isFocused) {
+      setTextValue(displayFn(value));
+      setIsInvalid(false);
+    }
+  }, [value, isFocused, displayFn]);
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value);
+    onChange(v);
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setTextValue(raw);
+
+    const cleaned = raw.replace(/[,%\s]/g, "");
+    if (cleaned === "") { setIsInvalid(true); return; }
+
+    const parsed = parseFn(cleaned);
+    if (isNaN(parsed) || parsed < min || parsed > max) {
+      setIsInvalid(true);
+      return;
+    }
+
+    // Snap to nearest step
+    const snapped = Math.round((parsed - min) / step) * step + min;
+    const clamped = Math.min(max, Math.max(min, snapped));
+    setIsInvalid(false);
+    onChange(clamped);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    setTextValue(displayFn(value));
+    setIsInvalid(false);
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsFocused(true);
+    e.target.select();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { inputRef.current?.blur(); return; }
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const dir = e.key === "ArrowUp" ? 1 : -1;
+      const next = Math.min(max, Math.max(min, value + dir * step));
+      onChange(Math.round((next - min) / step) * step + min);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-sm font-medium text-brand-text">{label}</label>
+      </div>
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={handleSliderChange}
+          className="flex-1 min-w-0"
+        />
+        <div className="flex items-center gap-1 shrink-0">
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="decimal"
+            value={textValue}
+            onChange={handleTextChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+            onKeyDown={handleKeyDown}
+            aria-label={`${label} value`}
+            aria-invalid={isInvalid || undefined}
+            className={`
+              w-20 px-2.5 py-1.5 text-sm text-right tabular-nums rounded-lg
+              bg-brand-dark border transition-colors focus:outline-none focus:ring-2
+              ${isInvalid
+                ? "border-red-500/60 focus:ring-red-500/20 text-red-400"
+                : "border-brand-border text-brand-ecredit focus:ring-brand-ecredit/20 focus:border-brand-ecredit"
+              }
+            `}
+          />
+          {suffix && <span className="text-xs text-brand-muted font-medium">{suffix}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Config Editor
 // ---------------------------------------------------------------------------
 
 function ConfigEditor({
-  config,
-  index,
-  onChange,
-  onSave,
-  onCancel,
+  config, index, onChange, onSave, onCancel,
 }: {
-  config: ChargerGroup;
-  index: number;
+  config: ChargerGroup; index: number;
   onChange: (updated: ChargerGroup) => void;
-  onSave: () => void;
-  onCancel: (() => void) | null;
+  onSave: () => void; onCancel: (() => void) | null;
 }) {
   const update = <K extends keyof ChargerGroup>(field: K, value: ChargerGroup[K]) => {
     onChange({ ...config, [field]: value });
@@ -83,13 +206,13 @@ function ConfigEditor({
         )}
       </div>
 
-      {/* Location (per-config) */}
+      {/* Location */}
       <div>
         <label className="block text-sm font-medium text-brand-text mb-1.5">Location</label>
         <select
           value={config.country}
           onChange={(e) => update("country", e.target.value as Country)}
-          className="w-full px-3 py-2 bg-brand-surface border border-brand-border rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-ecredit/15 focus:border-brand-ecredit transition-colors"
+          className="w-full px-3 py-2 bg-brand-dark border border-brand-border rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-ecredit/15 focus:border-brand-ecredit transition-colors"
         >
           {COUNTRY_OPTIONS.map((c) => (
             <option key={c.value} value={c.value}>{c.label}</option>
@@ -97,7 +220,7 @@ function ConfigEditor({
         </select>
       </div>
 
-      {/* Charger Type */}
+      {/* Type */}
       <div>
         <label className="block text-sm font-medium text-brand-text mb-1.5">Charger Type</label>
         <div className="grid grid-cols-2 gap-1.5">
@@ -108,7 +231,7 @@ function ConfigEditor({
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 config.type === type
                   ? "bg-brand-ecredit text-brand-dark"
-                  : "bg-brand-surface text-brand-muted hover:text-brand-text"
+                  : "bg-brand-dark text-brand-muted border border-brand-border hover:text-brand-text"
               }`}
             >
               {type === "public" ? "Public" : "Residential"}
@@ -117,7 +240,7 @@ function ConfigEditor({
         </div>
       </div>
 
-      {/* Charger Power */}
+      {/* Power */}
       <div>
         <label className="block text-sm font-medium text-brand-text mb-1.5">Charger Power</label>
         <div className="grid grid-cols-3 gap-1.5">
@@ -128,7 +251,7 @@ function ConfigEditor({
               className={`px-2 py-2 rounded-md text-sm font-medium transition-colors ${
                 Math.abs(config.powerMW - power.value) < 0.0001
                   ? "bg-brand-ecredit text-brand-dark"
-                  : "bg-brand-surface text-brand-muted hover:text-brand-text"
+                  : "bg-brand-dark text-brand-muted border border-brand-border hover:text-brand-text"
               }`}
             >
               {power.label}
@@ -137,9 +260,35 @@ function ConfigEditor({
         </div>
       </div>
 
-      <SliderField label="Number of Chargers" value={config.chargers} min={10} max={10000} step={10} format={(v) => v.toLocaleString("en-US")} onChange={(v) => update("chargers", v)} />
-      <SliderField label="Utilization Rate" value={config.utilization} min={0.05} max={0.40} step={0.01} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => update("utilization", v)} />
-      <SliderField label="Flexibility Potential" value={config.flexPotential} min={0.20} max={0.80} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => update("flexPotential", v)} />
+      {/* Dual-input sliders */}
+      <DualSlider
+        label="Number of Chargers"
+        value={config.chargers}
+        min={10} max={10000} step={10}
+        displayFn={(v) => v.toLocaleString("en-US")}
+        parseFn={(t) => { const n = parseInt(t.replace(/,/g, ""), 10); return isNaN(n) || n < 0 ? NaN : n; }}
+        onChange={(v) => update("chargers", v)}
+      />
+
+      <DualSlider
+        label="Utilization Rate"
+        value={config.utilization}
+        min={0.05} max={0.40} step={0.01}
+        displayFn={(v) => String(Math.round(v * 100))}
+        parseFn={(t) => { const n = parseFloat(t); return isNaN(n) || n < 0 ? NaN : n / 100; }}
+        suffix="%"
+        onChange={(v) => update("utilization", v)}
+      />
+
+      <DualSlider
+        label="Flexibility Potential"
+        value={config.flexPotential}
+        min={0.20} max={0.80} step={0.05}
+        displayFn={(v) => String(Math.round(v * 100))}
+        parseFn={(t) => { const n = parseFloat(t); return isNaN(n) || n < 0 ? NaN : n / 100; }}
+        suffix="%"
+        onChange={(v) => update("flexPotential", v)}
+      />
 
       <button onClick={onSave} className="w-full py-2.5 rounded-lg text-sm font-semibold bg-brand-ecredit/15 text-brand-ecredit border border-brand-ecredit/25 hover:bg-brand-ecredit/25 transition-colors">
         Save Configuration
@@ -149,30 +298,7 @@ function ConfigEditor({
 }
 
 // ---------------------------------------------------------------------------
-// Slider
-// ---------------------------------------------------------------------------
-
-function SliderField({ label, value, min, max, step, format, onChange }: {
-  label: string; value: number; min: number; max: number; step: number;
-  format: (v: number) => string; onChange: (v: number) => void;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <label className="text-sm font-medium text-brand-text">{label}</label>
-        <span className="text-sm font-semibold text-brand-ecredit tabular-nums">{format(value)}</span>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))} className="w-full" />
-      <div className="flex justify-between text-xs text-brand-muted mt-0.5">
-        <span>{format(min)}</span>
-        <span>{format(max)}</span>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Sidebar config row with estimated revenue
+// Value-First Sidebar Row — revenue is the headline
 // ---------------------------------------------------------------------------
 
 function ConfigRow({ config, index, onEdit, onRemove, canRemove }: {
@@ -189,35 +315,34 @@ function ConfigRow({ config, index, onEdit, onRemove, canRemove }: {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.15 }}
-      className="flex items-center gap-3 px-3 py-3 rounded-lg bg-brand-surface border border-brand-border/40"
+      className="px-3.5 py-3 rounded-lg bg-brand-dark border border-brand-border/40"
     >
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-brand-text truncate">
-          {config.chargers.toLocaleString()} {config.type === "public" ? "Public" : "Residential"} &middot; {countryLabel(config.country)}
+      {/* Revenue — the headline */}
+      <div className="flex items-start justify-between mb-1">
+        <p className="text-lg font-bold text-brand-ecredit tabular-nums leading-tight">
+          +{formatEur(monthlyRevenue)}<span className="text-xs font-medium text-brand-muted">/mo</span>
         </p>
-        <p className="text-xs text-brand-muted">
-          {powerLabel(config.powerMW)} &middot; {Math.round(config.utilization * 100)}% util
-        </p>
-        <p className="text-xs font-semibold text-brand-ecredit mt-0.5">
-          +{formatEur(monthlyRevenue)}/mo
-        </p>
+        <div className="flex items-center gap-1 shrink-0 -mt-0.5">
+          <button onClick={onEdit} aria-label="Edit" className="p-1.5 rounded-md text-brand-muted hover:text-brand-ecredit hover:bg-brand-ecredit/10 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
+          {canRemove && (
+            <button onClick={onRemove} aria-label="Delete" className="p-1.5 rounded-md text-brand-muted hover:text-brand-warm hover:bg-brand-warm/10 transition-colors">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
-
-      <button onClick={onEdit} aria-label="Edit" className="p-1.5 rounded-md text-brand-muted hover:text-brand-ecredit hover:bg-brand-ecredit/10 transition-colors">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-        </svg>
-      </button>
-
-      {canRemove && (
-        <button onClick={onRemove} aria-label="Delete" className="p-1.5 rounded-md text-brand-muted hover:text-brand-warm hover:bg-brand-warm/10 transition-colors">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
-        </button>
-      )}
+      {/* Context line */}
+      <p className="text-xs text-brand-muted leading-relaxed">
+        {countryLabel(config.country)} &middot; {config.chargers.toLocaleString()} {config.type === "public" ? "Public" : "Residential"} &middot; {powerLabel(config.powerMW)}
+      </p>
     </motion.div>
   );
 }
@@ -276,9 +401,9 @@ export function CalculatorForm({
 
   return (
     <Card className="sticky top-16" padding="md">
-      {/* Horizon selector */}
+      {/* Timeframe zoom */}
       <div className="mb-5">
-        <label className="block text-sm font-medium text-brand-text mb-1.5">Projection</label>
+        <label className="block text-sm font-medium text-brand-text mb-1.5">Timeframe</label>
         <div className="grid grid-cols-3 gap-1.5">
           {[3, 6, 12].map((months) => (
             <button
@@ -287,10 +412,10 @@ export function CalculatorForm({
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 horizonMonths === months
                   ? "bg-brand-ecredit text-brand-dark"
-                  : "bg-brand-surface text-brand-muted hover:text-brand-text"
+                  : "bg-brand-dark text-brand-muted border border-brand-border hover:text-brand-text"
               }`}
             >
-              {months} mo
+              {months} months
             </button>
           ))}
         </div>
@@ -298,7 +423,7 @@ export function CalculatorForm({
 
       <div className="border-t border-brand-border/40 mb-4" />
 
-      {/* Saved configs sidebar */}
+      {/* Value-first sidebar */}
       <AnimatePresence mode="popLayout">
         {!isEditing && configs.length > 0 && (
           <motion.div key="sidebar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2 mb-4">
