@@ -540,6 +540,33 @@ export async function getLeadEngagementKPIs(leadId: string) {
 }
 
 /**
+ * Get all sessions for a lead (via their tokens) with timestamps.
+ * Used for building the retention/visit frequency chart.
+ */
+export async function getLeadSessions(leadId: string) {
+  const supabase = createServerClient();
+
+  const { data: tokens, error: tokenError } = await supabase
+    .from("tokens")
+    .select("id")
+    .eq("lead_id", leadId);
+
+  if (tokenError) throw tokenError;
+  if (!tokens || tokens.length === 0) return [];
+
+  const tokenIds = tokens.map((t) => t.id);
+
+  const { data: sessions, error } = await supabase
+    .from("sessions")
+    .select("id, started_at, duration_seconds, device_type, events_count")
+    .in("token_id", tokenIds)
+    .order("started_at", { ascending: true });
+
+  if (error) throw error;
+  return sessions ?? [];
+}
+
+/**
  * Activate or deactivate a token.
  */
 export async function setTokenActive(tokenId: string, isActive: boolean) {
