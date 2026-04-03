@@ -110,13 +110,12 @@ export function SimulatorClient({
         try {
           const result = calculateRevenue(state);
 
-          // Persist snapshot to database
+          // Persist snapshot to database (session_id omitted — not tracked in sessions table)
           await fetch("/api/snapshots/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               tokenId,
-              sessionId: sessionIdRef.current || undefined,
               inputState: state,
               outputResults: result,
               clientVersion: version,
