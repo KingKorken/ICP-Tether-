@@ -22,8 +22,8 @@ export async function upsertLead(params: {
   });
 
   // Fallback to manual upsert if RPC not set up yet
-  if (error?.code === "42883") {
-    // function does not exist
+  if (error?.code === "42883" || error?.code === "PGRST202") {
+    // function does not exist (42883 = PostgreSQL, PGRST202 = PostgREST)
     const { data: existingLead } = await supabase
       .from("leads")
       .select("*")
