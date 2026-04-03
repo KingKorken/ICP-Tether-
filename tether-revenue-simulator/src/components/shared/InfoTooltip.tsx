@@ -58,7 +58,7 @@ export function InfoTooltip({ content, disclaimer, className = "" }: InfoTooltip
       {isOpen && (
         <div
           ref={tooltipRef}
-          className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-brand-surface rounded-lg border border-brand-border/80 p-4 text-left shadow-sm"
+          className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-brand-surface rounded-lg border border-brand-border/80 p-4 text-left shadow-sm normal-case tracking-normal"
         >
           {/* Arrow pointing up */}
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[-1px]">
