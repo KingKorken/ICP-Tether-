@@ -1,6 +1,6 @@
 "use client";
 
-import { ZONE_TO_COUNTRY, ZONE_METADATA } from "@/lib/calculator/market-data";
+import { ZONE_TO_COUNTRY, ZONE_METADATA, COUNTRY_OPTIONS } from "@/lib/calculator/market-data";
 import type { BiddingZone } from "@/lib/calculator/types";
 
 interface ZoneTooltipProps {
@@ -9,9 +9,17 @@ interface ZoneTooltipProps {
 }
 
 export function ZoneTooltip({ zoneId, position }: ZoneTooltipProps) {
-  const meta = ZONE_METADATA.find((z) => z.id === zoneId);
   const country = ZONE_TO_COUNTRY[zoneId];
   const isSupported = country !== null;
+
+  // For supported zones, show the country name; for unsupported, show the zone label
+  let label: string;
+  if (isSupported) {
+    label = COUNTRY_OPTIONS.find((c) => c.value === country)?.label ?? zoneId;
+  } else {
+    const meta = ZONE_METADATA.find((z) => z.id === zoneId);
+    label = meta?.label ?? zoneId;
+  }
 
   return (
     <div
@@ -22,20 +30,14 @@ export function ZoneTooltip({ zoneId, position }: ZoneTooltipProps) {
         transform: "translate(-50%, 0)",
       }}
     >
-      {/* Arrow pointing up */}
       <div className="flex justify-center">
         <div className="w-2 h-2 bg-brand-dark transform rotate-45 translate-y-1" />
       </div>
       <div className="bg-brand-dark text-white text-xs rounded-md px-2.5 py-1.5 shadow-lg whitespace-nowrap">
-        <span className="font-medium">{meta?.label ?? zoneId}</span>
+        <span className="font-medium">{label}</span>
         {!isSupported && (
-          <span className="ml-1.5 text-brand-muted/70">
+          <span className="ml-1.5 opacity-60">
             Coming soon
-          </span>
-        )}
-        {isSupported && (
-          <span className="ml-1.5 text-brand-tether/80">
-            Click to select
           </span>
         )}
       </div>
