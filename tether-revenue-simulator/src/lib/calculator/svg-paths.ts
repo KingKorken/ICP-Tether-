@@ -15,8 +15,9 @@ export interface SvgZonePath {
   d: string;
 }
 
-// Cropped viewBox to focus on Europe
-export const MAP_VIEWBOX = "360 300 175 160";
+// Cropped viewBox focused tightly on Northern/Western Europe
+// where all 5 supported countries are located
+export const MAP_VIEWBOX = "383 310 100 120";
 
 // For countries with multiple zones (SE, NO), we use the full country path
 // and map it to the first zone. The BiddingZoneMap component knows to highlight

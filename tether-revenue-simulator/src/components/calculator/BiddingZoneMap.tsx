@@ -74,7 +74,6 @@ export function BiddingZoneMap({ selectedCountry, onChange }: BiddingZoneMapProp
     [onChange]
   );
 
-  // Check if a zone belongs to the currently selected country
   const isZoneSelected = (zoneId: BiddingZone): boolean => {
     const zoneCountry = ZONE_TO_COUNTRY[zoneId];
     return zoneCountry === selectedCountry;
@@ -103,42 +102,39 @@ export function BiddingZoneMap({ selectedCountry, onChange }: BiddingZoneMapProp
     return ZONE_TO_COUNTRY[zoneId] !== null ? "pointer" : "default";
   };
 
-  // Get a display label for a zone in the tooltip
   const getZoneLabel = (zoneId: BiddingZone): string => {
-    // For representative zones (SE3, NO1), show the country name
     const country = ZONE_TO_COUNTRY[zoneId];
     if (country) {
       const countryLabel = COUNTRY_OPTIONS.find((c) => c.value === country)?.label;
       if (countryLabel) return countryLabel;
     }
-    // For unsupported zones, use the metadata label
     const meta = ZONE_METADATA.find((z) => z.id === zoneId);
     return meta?.label ?? zoneId;
   };
-
-  const selectedLabel = COUNTRY_OPTIONS.find((c) => c.value === selectedCountry)?.label ?? selectedCountry;
 
   return (
     <div>
       <label className="block text-sm font-medium text-brand-text mb-1.5">
         Electricity Market
       </label>
-      <div className="relative bg-[#dce8f0] border border-brand-border rounded-lg p-1.5 overflow-hidden">
+
+      {/* Map */}
+      <div className="relative bg-[#dce8f0] border border-brand-border rounded-t-lg p-1 overflow-hidden">
         <svg
           viewBox={MAP_VIEWBOX}
           className="w-full h-auto"
           aria-label="European electricity bidding zone map"
           role="img"
-          style={{ minHeight: "200px" }}
+          style={{ minHeight: "180px" }}
+          preserveAspectRatio="xMidYMid meet"
         >
-          {/* Zone paths */}
           {ZONE_PATHS.map((zone) => (
             <path
               key={zone.id}
               d={zone.d}
               fill={getZoneFill(zone.id)}
               stroke={getZoneStroke(zone.id)}
-              strokeWidth={isZoneSelected(zone.id) ? 1 : 0.3}
+              strokeWidth={isZoneSelected(zone.id) ? 0.8 : 0.2}
               strokeLinejoin="round"
               style={{
                 cursor: getZoneCursor(zone.id),
@@ -162,18 +158,29 @@ export function BiddingZoneMap({ selectedCountry, onChange }: BiddingZoneMapProp
           ))}
         </svg>
 
-        {/* Floating tooltip */}
         {hoveredZone && tooltipPos && (
           <ZoneTooltip zoneId={hoveredZone} position={tooltipPos} />
         )}
       </div>
 
-      {/* Selected market indicator */}
-      <div className="mt-1.5 flex items-center gap-1.5">
-        <div className="w-3 h-3 rounded-sm bg-brand-primary flex-shrink-0" />
-        <span className="text-xs text-brand-muted">
-          Selected: <span className="font-medium text-brand-text">{selectedLabel}</span>
-        </span>
+      {/* Quick-select country buttons below the map */}
+      <div className="grid grid-cols-5 border border-t-0 border-brand-border rounded-b-lg overflow-hidden">
+        {COUNTRY_OPTIONS.map((country) => (
+          <button
+            key={country.value}
+            onClick={() => onChange("country", country.value)}
+            className={`
+              py-2 text-xs font-medium transition-colors text-center
+              ${
+                selectedCountry === country.value
+                  ? "bg-brand-primary text-white"
+                  : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
+              }
+            `}
+          >
+            {country.label === "Netherlands" ? "NL" : country.label === "Sweden" ? "SE" : country.label === "Norway" ? "NO" : country.label === "Germany" ? "DE" : "FR"}
+          </button>
+        ))}
       </div>
     </div>
   );
