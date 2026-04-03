@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createToken, upsertLead } from "@/lib/db/queries";
 import { isFreeEmail } from "@/lib/utils/email";
@@ -25,12 +25,19 @@ const createTokenSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   if (!validateOrigin(request)) {
-    return errorResponse("Invalid origin", 403);
+    const origin = request.headers.get("origin") ?? "none";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "not set";
+    return errorResponse(`Invalid origin. Got: ${origin}, Expected: ${appUrl}`, 403);
   }
 
   // Admin auth guard
   const auth = await requireAdmin(request);
-  if ("response" in auth) return auth.response;
+  if ("response" in auth) {
+    return NextResponse.json(
+      { error: "Unauthorized. Please sign in again." },
+      { status: 401 }
+    );
+  }
 
   // Rate limiting
   const ip = getClientIp(request);
@@ -84,6 +91,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Token creation failed:", error);
-    return errorResponse("Failed to create token", 500);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return errorResponse(`Failed to create token: ${message}`, 500);
   }
 }
