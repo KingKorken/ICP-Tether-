@@ -130,8 +130,8 @@ export default function DashboardPage() {
                   className="border-b border-brand-secondary/30 hover:bg-brand-light/50 transition-colors"
                 >
                   <td className="py-3 px-4">
-                    <div>
-                      <p className="font-medium text-brand-dark">
+                    <a href={`/leads/${lead.id}`} className="block group">
+                      <p className="font-medium text-brand-dark group-hover:text-brand-tether transition-colors">
                         {lead.company_name || "-"}
                       </p>
                       {lead.is_free_email && (
@@ -139,7 +139,7 @@ export default function DashboardPage() {
                           Personal email
                         </span>
                       )}
-                    </div>
+                    </a>
                   </td>
                   <td className="py-3 px-4 text-brand-muted">{lead.email}</td>
                   <td className="py-3 px-4">
@@ -181,16 +181,24 @@ export default function DashboardPage() {
                     </div>
                   </td>
                   <td className="py-3 px-4">
-                    {lead.tokens[0] && (
+                    <div className="flex items-center gap-3">
                       <a
-                        href={`/sim/t/${lead.tokens[0].token}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-tether hover:underline text-xs"
+                        href={`/leads/${lead.id}`}
+                        className="text-brand-primary hover:underline text-xs font-medium"
                       >
-                        Open
+                        View
                       </a>
-                    )}
+                      {lead.tokens[0] && (
+                        <a
+                          href={`/sim/t/${lead.tokens[0].token}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand-tether hover:underline text-xs"
+                        >
+                          Open Calc
+                        </a>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

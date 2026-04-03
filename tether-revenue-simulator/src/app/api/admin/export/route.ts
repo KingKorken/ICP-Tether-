@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/db/server";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { getClientIp, errorResponse } from "@/lib/api-utils";
+import { requireAdmin } from "@/lib/auth/admin";
 
 /**
  * GET /api/admin/export
  * CSV export of leads data.
  * Uses streaming response to avoid memory limits on Vercel.
- * TODO: Add admin auth guard
  */
 export async function GET(request: NextRequest) {
+  // Admin auth guard
+  const auth = await requireAdmin(request);
+  if ("response" in auth) return auth.response;
+
   const ip = getClientIp(request);
-  const rateLimitKey = `admin-export:${ip}`;
+  const rateLimitKey = `admin-export:${auth.session.adminId}`;
   const rateCheck = checkRateLimit(
     rateLimitKey,
     RATE_LIMITS.adminExport.limit,

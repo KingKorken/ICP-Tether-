@@ -11,6 +11,7 @@ import {
   errorResponse,
   successResponse,
 } from "@/lib/api-utils";
+import { requireAdmin } from "@/lib/auth/admin";
 
 const createTokenSchema = z.object({
   email: z.string().email().max(254),
@@ -21,16 +22,19 @@ const createTokenSchema = z.object({
 /**
  * POST /api/tokens/create
  * Admin endpoint to create sales-generated tokens.
- * TODO: Add admin auth guard (Supabase Auth check)
  */
 export async function POST(request: NextRequest) {
   if (!validateOrigin(request)) {
     return errorResponse("Invalid origin", 403);
   }
 
+  // Admin auth guard
+  const auth = await requireAdmin(request);
+  if ("response" in auth) return auth.response;
+
   // Rate limiting
   const ip = getClientIp(request);
-  const rateLimitKey = `token-create:${ip}`;
+  const rateLimitKey = `token-create:${auth.session.adminId}`;
   const rateCheck = checkRateLimit(
     rateLimitKey,
     RATE_LIMITS.tokenCreate.limit,
@@ -40,10 +44,6 @@ export async function POST(request: NextRequest) {
   if (!rateCheck.allowed) {
     return errorResponse("Too many requests", 429);
   }
-
-  // TODO: Validate admin session here
-  // const adminSession = await validateAdminSession(request);
-  // if (!adminSession) return errorResponse("Unauthorized", 401);
 
   let body: z.infer<typeof createTokenSchema>;
   try {

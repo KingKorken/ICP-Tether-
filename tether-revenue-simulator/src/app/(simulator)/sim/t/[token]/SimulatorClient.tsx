@@ -101,12 +101,30 @@ export function SimulatorClient({
       }
 
       saveTimeoutRef.current = setTimeout(async () => {
+        // Skip persistence for demo mode
+        if (tokenId === "demo-token") return;
+
         saveVersionRef.current += 1;
         const version = saveVersionRef.current;
         setIsSaving(true);
 
         try {
           const result = calculateRevenue(state);
+
+          // Persist snapshot to database
+          await fetch("/api/snapshots/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tokenId,
+              sessionId: sessionIdRef.current || undefined,
+              inputState: state,
+              outputResults: result,
+              clientVersion: version,
+            }),
+          });
+
+          // Also track the event for analytics
           await fetch("/api/events/track", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -123,10 +141,8 @@ export function SimulatorClient({
               token_id: tokenId,
             }),
           });
-
-          void result;
         } catch {
-          // Silent failure
+          // Silent failure — never break the user experience
         } finally {
           setIsSaving(false);
         }

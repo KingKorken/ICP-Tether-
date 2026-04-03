@@ -433,3 +433,154 @@ export async function logAdminAction(params: {
     metadata: params.metadata ?? null,
   });
 }
+
+/**
+ * Get detailed lead data including tokens, contacts, and engagement stats.
+ */
+export async function getLeadDetail(leadId: string) {
+  const supabase = createServerClient();
+
+  const { data: lead, error } = await supabase
+    .from("leads")
+    .select(
+      `
+      *,
+      tokens(id, token, origin, is_active, created_at, last_used_at, prefilled_data),
+      contact_requests(id, message, preferred_contact, is_handled, created_at)
+    `
+    )
+    .eq("id", leadId)
+    .single();
+
+  if (error) throw error;
+  return lead;
+}
+
+/**
+ * Get all snapshots for a lead (via their tokens).
+ * Returns the calculator inputs and results for each snapshot.
+ */
+export async function getLeadSnapshots(leadId: string) {
+  const supabase = createServerClient();
+
+  // First get all token IDs for this lead
+  const { data: tokens, error: tokenError } = await supabase
+    .from("tokens")
+    .select("id")
+    .eq("lead_id", leadId);
+
+  if (tokenError) throw tokenError;
+  if (!tokens || tokens.length === 0) return [];
+
+  const tokenIds = tokens.map((t) => t.id);
+
+  const { data: snapshots, error } = await supabase
+    .from("snapshots")
+    .select("id, token_id, input_state, output_results, client_version, created_at")
+    .in("token_id", tokenIds)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return snapshots ?? [];
+}
+
+/**
+ * Get engagement KPIs for a lead (aggregated across all their tokens).
+ */
+export async function getLeadEngagementKPIs(leadId: string) {
+  const supabase = createServerClient();
+
+  // Get all token IDs for this lead
+  const { data: tokens, error: tokenError } = await supabase
+    .from("tokens")
+    .select("id")
+    .eq("lead_id", leadId);
+
+  if (tokenError) throw tokenError;
+  if (!tokens || tokens.length === 0) {
+    return {
+      totalSessions: 0,
+      totalEvents: 0,
+      pdfExports: 0,
+      snapshotCount: 0,
+      lastEventAt: null,
+    };
+  }
+
+  const tokenIds = tokens.map((t) => t.id);
+
+  // Parallel queries for KPIs
+  const [sessions, events, pdfExports, snapshots] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("*", { count: "exact", head: true })
+      .in("token_id", tokenIds),
+    supabase
+      .from("events")
+      .select("*", { count: "exact", head: true })
+      .in("token_id", tokenIds),
+    supabase
+      .from("events")
+      .select("*", { count: "exact", head: true })
+      .in("token_id", tokenIds)
+      .eq("event_type", "pdf.exported"),
+    supabase
+      .from("snapshots")
+      .select("*", { count: "exact", head: true })
+      .in("token_id", tokenIds),
+  ]);
+
+  // Get most recent event timestamp
+  const { data: lastEvent } = await supabase
+    .from("events")
+    .select("created_at")
+    .in("token_id", tokenIds)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  return {
+    totalSessions: sessions.count ?? 0,
+    totalEvents: events.count ?? 0,
+    pdfExports: pdfExports.count ?? 0,
+    snapshotCount: snapshots.count ?? 0,
+    lastEventAt: lastEvent?.created_at ?? null,
+  };
+}
+
+/**
+ * Activate or deactivate a token.
+ */
+export async function setTokenActive(tokenId: string, isActive: boolean) {
+  const supabase = createServerClient();
+
+  const { error } = await supabase
+    .from("tokens")
+    .update({ is_active: isActive })
+    .eq("id", tokenId);
+
+  if (error) throw error;
+}
+
+/**
+ * Get recently created sales tokens (for the tokens page).
+ */
+export async function getRecentSalesTokens(limit = 10) {
+  const supabase = createServerClient();
+
+  const { data, error } = await supabase
+    .from("tokens")
+    .select(
+      `
+      id, token, origin, is_active, created_at,
+      leads(id, email, company_name)
+    `
+    )
+    .eq("origin", "sales_generated")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}

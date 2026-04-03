@@ -2,15 +2,19 @@ import { NextRequest } from "next/server";
 import { createServerClient } from "@/lib/db/server";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { getClientIp, errorResponse, successResponse } from "@/lib/api-utils";
+import { requireAdmin } from "@/lib/auth/admin";
 
 /**
  * GET /api/admin/analytics
  * Aggregate market intelligence for the leadership view.
- * TODO: Add admin auth guard
  */
 export async function GET(request: NextRequest) {
+  // Admin auth guard
+  const auth = await requireAdmin(request);
+  if ("response" in auth) return auth.response;
+
   const ip = getClientIp(request);
-  const rateLimitKey = `admin:${ip}`;
+  const rateLimitKey = `admin:${auth.session.adminId}`;
   const rateCheck = checkRateLimit(
     rateLimitKey,
     RATE_LIMITS.adminApi.limit,
