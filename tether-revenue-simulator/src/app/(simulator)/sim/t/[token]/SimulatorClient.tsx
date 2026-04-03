@@ -7,7 +7,6 @@ import { ResultsHero } from "@/components/calculator/ResultsHero";
 import { SeasonalChart } from "@/components/calculator/SeasonalChart";
 import { CumulativeTimeline } from "@/components/calculator/CumulativeTimeline";
 import { LossCounter } from "@/components/calculator/LossCounter";
-import { MethodologyPanel } from "@/components/calculator/MethodologyPanel";
 import { startBatcher, stopBatcher, trackEvent } from "@/lib/tracking/tracker";
 import { EVENTS } from "@/lib/tracking/events";
 import type { SimulatorState } from "@/lib/calculator/types";
@@ -291,10 +290,8 @@ export function SimulatorClient({
           />
         </div>
 
-        {/* Methodology / See the Math */}
-        <div className="mt-6 mb-16">
-          <MethodologyPanel />
-        </div>
+        {/* Spacing before footer */}
+        <div className="mb-16" />
       </main>
 
       {/* Footer */}
