@@ -85,7 +85,7 @@ export default async function AdminLayout({
                 href="/tokens"
                 className="text-brand-muted hover:text-brand-tether transition-colors"
               >
-                Tokens
+                New User Account
               </a>
             </nav>
             <div className="flex items-center gap-3 border-l border-brand-secondary/50 pl-6">
