@@ -134,3 +134,23 @@ input[type="range"]::-moz-range-thumb {
   border: 2px solid var(--brand-surface);
   box-shadow: 0 1px 3px rgba(26, 58, 42, 0.25);
 }
+
+/* Leaflet tooltip styling */
+.zone-tooltip {
+  background: var(--brand-dark) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-family: var(--font-sans) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+.zone-tooltip::before {
+  border-top-color: var(--brand-dark) !important;
+}
+
+/* Override Leaflet focus outline that creates blue frame */
+.leaflet-interactive:focus {
+  outline: none !important;
+}

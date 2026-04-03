@@ -1,186 +1,227 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { ZONE_PATHS, MAP_VIEWBOX } from "@/lib/calculator/svg-paths";
+import { useEffect, useRef, useState } from "react";
 import { ZONE_TO_COUNTRY, ZONE_METADATA, COUNTRY_OPTIONS } from "@/lib/calculator/market-data";
 import type { Country, BiddingZone } from "@/lib/calculator/types";
-import { ZoneTooltip } from "./ZoneTooltip";
+import type L from "leaflet";
 
 interface BiddingZoneMapProps {
   selectedCountry: Country;
   onChange: (field: "country", value: Country) => void;
 }
 
+// Map from GeoJSON zone names (SE_1) to our BiddingZone type (SE1)
+const GEOJSON_TO_ZONE: Record<string, BiddingZone> = {
+  SE_1: "SE1", SE_2: "SE2", SE_3: "SE3", SE_4: "SE4",
+  NO_1: "NO1", NO_2: "NO2", NO_3: "NO3", NO_4: "NO4", NO_5: "NO5",
+  DE_LU: "DE_LU", NL: "NL", FR: "FR",
+  DK_1: "DK1", DK_2: "DK2", FI: "FI",
+  EE: "EE", LV: "LV", LT: "LT",
+  PL: "PL", CZ: "CZ", SK: "SK",
+  AT: "AT", CH: "CH", BE: "BE",
+  ES: "ES", PT: "PT",
+  IT_NORD: "IT", IT_CNOR: "IT", IT_CSUD: "IT", IT_SUD: "IT", IT_SICI: "IT", IT_SARD: "IT",
+  GR: "GR", RO: "RO", BG: "BG",
+  HR: "HR", SI: "SI", HU: "HU",
+  RS: "RS",
+};
+
+function getZoneLabel(geoJsonName: string): string {
+  const zoneId = GEOJSON_TO_ZONE[geoJsonName];
+  if (!zoneId) return geoJsonName;
+
+  const country = ZONE_TO_COUNTRY[zoneId];
+  if (country) {
+    const label = COUNTRY_OPTIONS.find((c) => c.value === country)?.label;
+    if (geoJsonName.startsWith("SE_") || geoJsonName.startsWith("NO_")) {
+      const meta = ZONE_METADATA.find((z) => z.id === zoneId);
+      return meta?.label ?? `${zoneId} (${label})`;
+    }
+    if (geoJsonName.startsWith("IT_")) {
+      return `Italy (${geoJsonName.replace("IT_", "")})`;
+    }
+    return label ?? zoneId;
+  }
+
+  const meta = ZONE_METADATA.find((z) => z.id === zoneId);
+  return meta?.label ?? geoJsonName;
+}
+
+// Style helpers
+function getSelectedStyle(): L.PathOptions {
+  return { fillColor: "#1a3a2a", fillOpacity: 0.8, color: "#f3f5f4", weight: 1.5 };
+}
+function getSupportedStyle(): L.PathOptions {
+  return { fillColor: "#3a7d5c", fillOpacity: 0.3, color: "#d4dbd7", weight: 0.5 };
+}
+function getUnsupportedStyle(): L.PathOptions {
+  return { fillColor: "#e8ede9", fillOpacity: 0.5, color: "#d4dbd7", weight: 0.5 };
+}
+
 export function BiddingZoneMap({ selectedCountry, onChange }: BiddingZoneMapProps) {
-  const [hoveredZone, setHoveredZone] = useState<BiddingZone | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const handleZoneClick = useCallback(
-    (zoneId: BiddingZone) => {
-      const country = ZONE_TO_COUNTRY[zoneId];
-      if (country) {
-        onChange("country", country);
-      }
-    },
-    [onChange]
-  );
+  // Use refs for callbacks so Leaflet event handlers always have latest values
+  const selectedCountryRef = useRef(selectedCountry);
+  selectedCountryRef.current = selectedCountry;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
-  const handleMouseEnter = useCallback(
-    (e: React.MouseEvent<SVGPathElement>, zoneId: BiddingZone) => {
-      setHoveredZone(zoneId);
-      const svgEl = (e.target as SVGPathElement).closest("svg");
-      if (svgEl) {
-        const rect = svgEl.getBoundingClientRect();
-        setTooltipPos({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
+  // Initialize Leaflet map (once)
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
+
+    let map: L.Map;
+
+    import("leaflet").then((L) => {
+      // Fix default icon paths for Leaflet in bundlers
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+      if (!mapContainerRef.current) return;
+
+      map = L.map(mapContainerRef.current, {
+        center: [54, 10],
+        zoom: 4,
+        minZoom: 3,
+        maxZoom: 7,
+        zoomControl: true,
+        attributionControl: false,
+        scrollWheelZoom: true,
+      });
+
+      // Clean basemap
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+        { maxZoom: 19 }
+      ).addTo(map);
+
+      mapInstanceRef.current = map;
+
+      // Load GeoJSON data
+      fetch("/europe-zones.geojson")
+        .then((res) => res.json())
+        .then((data: GeoJSON.FeatureCollection) => {
+          const geoLayer = L.geoJSON(data, {
+            style: (feature) => {
+              if (!feature) return {};
+              const geoName = feature.properties?.zoneName as string;
+              const zoneId = GEOJSON_TO_ZONE[geoName];
+              if (!zoneId) return getUnsupportedStyle();
+
+              const country = ZONE_TO_COUNTRY[zoneId];
+              if (!country) return getUnsupportedStyle();
+              if (country === selectedCountryRef.current) return getSelectedStyle();
+              return getSupportedStyle();
+            },
+            onEachFeature: (feature, layer) => {
+              const geoName = feature.properties?.zoneName as string;
+              const zoneId = GEOJSON_TO_ZONE[geoName];
+              const label = getZoneLabel(geoName);
+              const country = zoneId ? ZONE_TO_COUNTRY[zoneId] : null;
+
+              // Tooltip
+              const tooltipHtml = country
+                ? `<strong>${label}</strong>`
+                : `<strong>${label}</strong><br/><span style="opacity:0.6;font-size:11px">Coming soon</span>`;
+
+              layer.bindTooltip(tooltipHtml, {
+                sticky: true,
+                direction: "top",
+                offset: L.point(0, -10),
+                className: "zone-tooltip",
+              });
+
+              // Click to select
+              layer.on("click", () => {
+                if (country) {
+                  onChangeRef.current("country", country);
+                }
+              });
+
+              // Hover highlight
+              layer.on("mouseover", () => {
+                const path = layer as L.Path;
+                if (country) {
+                  path.setStyle({ fillOpacity: 0.6 });
+                } else {
+                  path.setStyle({ fillOpacity: 0.35 });
+                }
+              });
+
+              layer.on("mouseout", () => {
+                geoJsonLayerRef.current?.resetStyle(layer as L.Path);
+              });
+            },
+          });
+
+          geoLayer.addTo(map);
+          geoJsonLayerRef.current = geoLayer;
+          setIsLoaded(true);
         });
-      }
-    },
-    []
-  );
+    });
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<SVGPathElement>) => {
-      const svgEl = (e.target as SVGPathElement).closest("svg");
-      if (svgEl) {
-        const rect = svgEl.getBoundingClientRect();
-        setTooltipPos({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-        });
-      }
-    },
-    []
-  );
+    // Leaflet CSS is loaded via link tag to avoid build issues
+    const linkEl = document.createElement("link");
+    linkEl.rel = "stylesheet";
+    linkEl.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(linkEl);
 
-  const handleMouseLeave = useCallback(() => {
-    setHoveredZone(null);
-    setTooltipPos(null);
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        geoJsonLayerRef.current = null;
+      }
+    };
   }, []);
 
-  const handleTouchEnd = useCallback(
-    (zoneId: BiddingZone) => {
-      const country = ZONE_TO_COUNTRY[zoneId];
-      if (country) {
-        onChange("country", country);
+  // Update styles when selectedCountry changes
+  useEffect(() => {
+    if (!geoJsonLayerRef.current || !isLoaded) return;
+
+    geoJsonLayerRef.current.eachLayer((layer) => {
+      const feature = (layer as L.GeoJSON & { feature?: GeoJSON.Feature }).feature;
+      if (!feature) return;
+
+      const geoName = feature.properties?.zoneName as string;
+      const zoneId = GEOJSON_TO_ZONE[geoName];
+      if (!zoneId) {
+        (layer as L.Path).setStyle(getUnsupportedStyle());
+        return;
       }
-      setHoveredZone(zoneId);
-      setTimeout(() => {
-        setHoveredZone(null);
-        setTooltipPos(null);
-      }, 2000);
-    },
-    [onChange]
-  );
 
-  const isZoneSelected = (zoneId: BiddingZone): boolean => {
-    const zoneCountry = ZONE_TO_COUNTRY[zoneId];
-    return zoneCountry === selectedCountry;
-  };
+      const country = ZONE_TO_COUNTRY[zoneId];
+      if (!country) {
+        (layer as L.Path).setStyle(getUnsupportedStyle());
+      } else if (country === selectedCountry) {
+        (layer as L.Path).setStyle(getSelectedStyle());
+      } else {
+        (layer as L.Path).setStyle(getSupportedStyle());
+      }
+    });
+  }, [selectedCountry, isLoaded]);
 
-  const getZoneFill = (zoneId: BiddingZone): string => {
-    const country = ZONE_TO_COUNTRY[zoneId];
-    const isSelected = isZoneSelected(zoneId);
-    const isHovered = hoveredZone === zoneId;
-
-    if (isSelected) {
-      return isHovered ? "#2d5a42" : "#1a3a2a";
-    }
-    if (country !== null) {
-      return isHovered ? "rgba(58, 125, 92, 0.5)" : "rgba(58, 125, 92, 0.25)";
-    }
-    return isHovered ? "#d4dbd7" : "#e8ede9";
-  };
-
-  const getZoneStroke = (zoneId: BiddingZone): string => {
-    if (isZoneSelected(zoneId)) return "#f3f5f4";
-    return "rgba(212, 219, 215, 0.6)";
-  };
-
-  const getZoneCursor = (zoneId: BiddingZone): string => {
-    return ZONE_TO_COUNTRY[zoneId] !== null ? "pointer" : "default";
-  };
-
-  const getZoneLabel = (zoneId: BiddingZone): string => {
-    const country = ZONE_TO_COUNTRY[zoneId];
-    if (country) {
-      const countryLabel = COUNTRY_OPTIONS.find((c) => c.value === country)?.label;
-      if (countryLabel) return countryLabel;
-    }
-    const meta = ZONE_METADATA.find((z) => z.id === zoneId);
-    return meta?.label ?? zoneId;
-  };
+  const selectedLabel = COUNTRY_OPTIONS.find((c) => c.value === selectedCountry)?.label ?? selectedCountry;
 
   return (
     <div>
       <label className="block text-sm font-medium text-brand-text mb-1.5">
         Electricity Market
       </label>
-
-      {/* Map */}
-      <div className="relative bg-[#dce8f0] border border-brand-border rounded-t-lg p-1 overflow-hidden">
-        <svg
-          viewBox={MAP_VIEWBOX}
-          className="w-full h-auto"
-          aria-label="European electricity bidding zone map"
-          role="img"
-          style={{ minHeight: "180px" }}
-          preserveAspectRatio="xMidYMid meet"
-        >
-          {ZONE_PATHS.map((zone) => (
-            <path
-              key={zone.id}
-              d={zone.d}
-              fill={getZoneFill(zone.id)}
-              stroke={getZoneStroke(zone.id)}
-              strokeWidth={isZoneSelected(zone.id) ? 0.8 : 0.2}
-              strokeLinejoin="round"
-              style={{
-                cursor: getZoneCursor(zone.id),
-                transition: "fill 0.15s ease",
-              }}
-              onClick={() => handleZoneClick(zone.id)}
-              onMouseEnter={(e) => handleMouseEnter(e, zone.id)}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-              onTouchEnd={() => handleTouchEnd(zone.id)}
-              aria-label={getZoneLabel(zone.id)}
-              role={ZONE_TO_COUNTRY[zone.id] ? "button" : undefined}
-              tabIndex={ZONE_TO_COUNTRY[zone.id] ? 0 : undefined}
-              onKeyDown={(e) => {
-                if ((e.key === "Enter" || e.key === " ") && ZONE_TO_COUNTRY[zone.id]) {
-                  e.preventDefault();
-                  handleZoneClick(zone.id);
-                }
-              }}
-            />
-          ))}
-        </svg>
-
-        {hoveredZone && tooltipPos && (
-          <ZoneTooltip zoneId={hoveredZone} position={tooltipPos} />
-        )}
-      </div>
-
-      {/* Quick-select country buttons below the map */}
-      <div className="grid grid-cols-5 border border-t-0 border-brand-border rounded-b-lg overflow-hidden">
-        {COUNTRY_OPTIONS.map((country) => (
-          <button
-            key={country.value}
-            onClick={() => onChange("country", country.value)}
-            className={`
-              py-2 text-xs font-medium transition-colors text-center
-              ${
-                selectedCountry === country.value
-                  ? "bg-brand-primary text-white"
-                  : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
-              }
-            `}
-          >
-            {country.label === "Netherlands" ? "NL" : country.label === "Sweden" ? "SE" : country.label === "Norway" ? "NO" : country.label === "Germany" ? "DE" : "FR"}
-          </button>
-        ))}
+      <div
+        ref={mapContainerRef}
+        className="w-full rounded-lg border border-brand-border overflow-hidden"
+        style={{ height: "280px", background: "#dce8f0" }}
+      />
+      <div className="mt-1.5 flex items-center gap-1.5">
+        <div className="w-3 h-3 rounded-sm bg-brand-primary flex-shrink-0" />
+        <span className="text-xs text-brand-muted">
+          Selected: <span className="font-medium text-brand-text">{selectedLabel}</span>
+        </span>
       </div>
     </div>
   );
