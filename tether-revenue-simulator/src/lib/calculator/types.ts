@@ -13,6 +13,44 @@ export const COUNTRIES = [
 ] as const;
 export type Country = (typeof COUNTRIES)[number];
 
+// =============================================
+// ENTSOE Bidding Zones (UI layer — maps to Country for engine)
+// =============================================
+
+export const BIDDING_ZONES = [
+  // Supported zones (clickable, map to a Country)
+  "SE1", "SE2", "SE3", "SE4",           // Sweden
+  "NO1", "NO2", "NO3", "NO4", "NO5",    // Norway
+  "DE_LU",                               // Germany/Luxembourg
+  "NL",                                  // Netherlands
+  "FR",                                  // France
+  // Unsupported zones (greyed out, "Coming soon")
+  "DK1", "DK2",                          // Denmark
+  "FI",                                  // Finland
+  "EE", "LV", "LT",                     // Baltics
+  "PL",                                  // Poland
+  "CZ", "SK",                           // Czech Republic, Slovakia
+  "AT",                                  // Austria
+  "CH",                                  // Switzerland
+  "BE",                                  // Belgium
+  "GB",                                  // Great Britain
+  "IE",                                  // Ireland
+  "ES", "PT",                           // Iberia
+  "IT",                                  // Italy (simplified)
+  "GR",                                  // Greece
+  "RO", "BG", "HR", "SI", "HU",         // SE Europe
+  "RS", "BA", "ME", "MK", "AL",         // Balkans
+] as const;
+
+export type BiddingZone = (typeof BIDDING_ZONES)[number];
+
+export interface ZoneMetadata {
+  id: BiddingZone;
+  label: string;
+  country: Country | null; // null = unsupported / "Coming soon"
+  center: { lat: number; lng: number };
+}
+
 export const CHARGER_TYPES = ["public", "residential"] as const;
 export type ChargerType = (typeof CHARGER_TYPES)[number];
 

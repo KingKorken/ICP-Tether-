@@ -1,4 +1,4 @@
-import type { Country } from "./types";
+import type { Country, BiddingZone, ZoneMetadata } from "./types";
 
 /**
  * Market data per country.
@@ -77,4 +77,76 @@ export const COUNTRY_OPTIONS = [
   { value: "germany" as const, label: "Germany", flag: "\uD83C\uDDE9\uD83C\uDDEA" },
   { value: "netherlands" as const, label: "Netherlands", flag: "\uD83C\uDDF3\uD83C\uDDF1" },
   { value: "france" as const, label: "France", flag: "\uD83C\uDDEB\uD83C\uDDF7" },
+];
+
+// =============================================
+// Bidding Zone → Country Mapping
+// =============================================
+
+export const ZONE_TO_COUNTRY: Record<BiddingZone, Country | null> = {
+  // Sweden zones
+  SE1: "sweden", SE2: "sweden", SE3: "sweden", SE4: "sweden",
+  // Norway zones
+  NO1: "norway", NO2: "norway", NO3: "norway", NO4: "norway", NO5: "norway",
+  // Single-zone countries
+  DE_LU: "germany", NL: "netherlands", FR: "france",
+  // Unsupported (coming soon)
+  DK1: null, DK2: null, FI: null,
+  EE: null, LV: null, LT: null,
+  PL: null, CZ: null, SK: null,
+  AT: null, CH: null, BE: null,
+  GB: null, IE: null,
+  ES: null, PT: null, IT: null,
+  GR: null, RO: null, BG: null,
+  HR: null, SI: null, HU: null,
+  RS: null, BA: null, ME: null, MK: null, AL: null,
+};
+
+export const ZONE_METADATA: ZoneMetadata[] = [
+  // Sweden (4 zones, north to south)
+  { id: "SE1", label: "SE1 (Lule\u00e5)", country: "sweden", center: { lat: 66.5, lng: 18.0 } },
+  { id: "SE2", label: "SE2 (Sundsvall)", country: "sweden", center: { lat: 62.5, lng: 16.0 } },
+  { id: "SE3", label: "SE3 (Stockholm)", country: "sweden", center: { lat: 59.3, lng: 16.0 } },
+  { id: "SE4", label: "SE4 (Malm\u00f6)", country: "sweden", center: { lat: 56.0, lng: 14.0 } },
+  // Norway (5 zones)
+  { id: "NO1", label: "NO1 (Oslo)", country: "norway", center: { lat: 59.9, lng: 10.7 } },
+  { id: "NO2", label: "NO2 (Kristiansand)", country: "norway", center: { lat: 58.5, lng: 7.0 } },
+  { id: "NO3", label: "NO3 (Trondheim)", country: "norway", center: { lat: 63.4, lng: 10.4 } },
+  { id: "NO4", label: "NO4 (Troms\u00f8)", country: "norway", center: { lat: 69.0, lng: 18.0 } },
+  { id: "NO5", label: "NO5 (Bergen)", country: "norway", center: { lat: 60.4, lng: 5.3 } },
+  // Germany/Luxembourg
+  { id: "DE_LU", label: "Germany", country: "germany", center: { lat: 51.2, lng: 10.4 } },
+  // Netherlands
+  { id: "NL", label: "Netherlands", country: "netherlands", center: { lat: 52.1, lng: 5.3 } },
+  // France
+  { id: "FR", label: "France", country: "france", center: { lat: 46.6, lng: 2.2 } },
+  // --- Unsupported zones (coming soon) ---
+  { id: "DK1", label: "DK1 (West Denmark)", country: null, center: { lat: 56.0, lng: 9.5 } },
+  { id: "DK2", label: "DK2 (East Denmark)", country: null, center: { lat: 55.7, lng: 12.0 } },
+  { id: "FI", label: "Finland", country: null, center: { lat: 64.0, lng: 26.0 } },
+  { id: "EE", label: "Estonia", country: null, center: { lat: 58.6, lng: 25.0 } },
+  { id: "LV", label: "Latvia", country: null, center: { lat: 57.0, lng: 24.5 } },
+  { id: "LT", label: "Lithuania", country: null, center: { lat: 55.2, lng: 24.0 } },
+  { id: "PL", label: "Poland", country: null, center: { lat: 52.0, lng: 19.5 } },
+  { id: "CZ", label: "Czech Republic", country: null, center: { lat: 49.8, lng: 15.5 } },
+  { id: "SK", label: "Slovakia", country: null, center: { lat: 48.7, lng: 19.7 } },
+  { id: "AT", label: "Austria", country: null, center: { lat: 47.5, lng: 13.3 } },
+  { id: "CH", label: "Switzerland", country: null, center: { lat: 46.8, lng: 8.2 } },
+  { id: "BE", label: "Belgium", country: null, center: { lat: 50.5, lng: 4.4 } },
+  { id: "GB", label: "Great Britain", country: null, center: { lat: 54.0, lng: -2.0 } },
+  { id: "IE", label: "Ireland", country: null, center: { lat: 53.4, lng: -8.2 } },
+  { id: "ES", label: "Spain", country: null, center: { lat: 40.4, lng: -3.7 } },
+  { id: "PT", label: "Portugal", country: null, center: { lat: 39.4, lng: -8.2 } },
+  { id: "IT", label: "Italy", country: null, center: { lat: 42.5, lng: 12.5 } },
+  { id: "GR", label: "Greece", country: null, center: { lat: 39.1, lng: 22.0 } },
+  { id: "RO", label: "Romania", country: null, center: { lat: 45.9, lng: 25.0 } },
+  { id: "BG", label: "Bulgaria", country: null, center: { lat: 42.7, lng: 25.5 } },
+  { id: "HR", label: "Croatia", country: null, center: { lat: 45.1, lng: 15.2 } },
+  { id: "SI", label: "Slovenia", country: null, center: { lat: 46.2, lng: 14.8 } },
+  { id: "HU", label: "Hungary", country: null, center: { lat: 47.2, lng: 19.5 } },
+  { id: "RS", label: "Serbia", country: null, center: { lat: 44.0, lng: 21.0 } },
+  { id: "BA", label: "Bosnia & Herzegovina", country: null, center: { lat: 43.9, lng: 17.7 } },
+  { id: "ME", label: "Montenegro", country: null, center: { lat: 42.5, lng: 19.3 } },
+  { id: "MK", label: "North Macedonia", country: null, center: { lat: 41.5, lng: 21.7 } },
+  { id: "AL", label: "Albania", country: null, center: { lat: 41.3, lng: 20.0 } },
 ];

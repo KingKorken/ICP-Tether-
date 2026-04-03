@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/shared/Card";
-import { COUNTRY_OPTIONS } from "@/lib/calculator/market-data";
+import { BiddingZoneMap } from "./BiddingZoneMap";
+import { GoogleMapsLookup } from "./GoogleMapsLookup";
 import {
   SLIDER_CONFIGS,
   type SimulatorState,
@@ -202,22 +203,13 @@ export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: 
       </h2>
 
       <div className="space-y-5">
-        {/* Country Selector */}
+        {/* Electricity Market Map */}
         <div>
-          <label className="block text-sm font-medium text-brand-text mb-1.5">
-            Market
-          </label>
-          <select
-            value={state.country}
-            onChange={(e) => onChange("country", e.target.value)}
-            className="w-full px-3 py-2 bg-brand-light border border-brand-border rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary/15 focus:border-brand-primary-light transition-colors"
-          >
-            {COUNTRY_OPTIONS.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          <BiddingZoneMap
+            selectedCountry={state.country}
+            onChange={onChange}
+          />
+          <GoogleMapsLookup onChange={onChange} />
         </div>
 
         {/* Charger Type Toggle */}
