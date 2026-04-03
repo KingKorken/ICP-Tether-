@@ -58,18 +58,18 @@ export function InfoTooltip({ content, disclaimer, className = "" }: InfoTooltip
       {isOpen && (
         <div
           ref={tooltipRef}
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-brand-surface rounded-lg border border-brand-border/80 p-4 text-left shadow-sm"
+          className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-brand-surface rounded-lg border border-brand-border/80 p-4 text-left shadow-sm"
         >
+          {/* Arrow pointing up */}
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[-1px]">
+            <div className="w-3 h-3 bg-brand-surface border-l border-t border-brand-border/80 transform rotate-45 translate-y-1.5" />
+          </div>
           <p className="text-sm text-brand-text leading-relaxed">{content}</p>
           {disclaimer && (
             <p className="text-xs text-brand-muted mt-2 pt-2 border-t border-brand-border/40 italic">
               {disclaimer}
             </p>
           )}
-          {/* Arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px]">
-            <div className="w-3 h-3 bg-brand-surface border-r border-b border-brand-border/80 transform rotate-45 -translate-y-1.5" />
-          </div>
         </div>
       )}
     </span>
