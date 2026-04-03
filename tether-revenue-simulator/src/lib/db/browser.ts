@@ -1,9 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient as createSupabaseBrowserClient } from "@supabase/ssr";
 
 /**
- * Creates a Supabase client with anon key for browser-side operations.
- * Only needed if we expose any client-side Supabase queries (e.g., admin auth).
- * CPO flows do NOT use this — they go through API routes.
+ * Creates a Supabase client for browser-side operations.
+ * Uses @supabase/ssr to store the auth session in cookies (not localStorage).
+ * This is critical — the middleware and admin layout read auth from cookies.
  */
 export function createBrowserClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,5 +15,5 @@ export function createBrowserClient() {
     );
   }
 
-  return createClient(supabaseUrl, anonKey);
+  return createSupabaseBrowserClient(supabaseUrl, anonKey);
 }

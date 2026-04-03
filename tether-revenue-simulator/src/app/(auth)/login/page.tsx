@@ -29,9 +29,12 @@ export default function AdminLoginPage() {
         return;
       }
 
-      // Auth successful — redirect to dashboard
+      // Auth successful — small delay to let cookies set, then redirect
+      await new Promise((resolve) => setTimeout(resolve, 500));
       window.location.href = "/dashboard";
-    } catch {
+      return; // Don't reset loading state — we're navigating away
+    } catch (err) {
+      console.error("Login error:", err);
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
