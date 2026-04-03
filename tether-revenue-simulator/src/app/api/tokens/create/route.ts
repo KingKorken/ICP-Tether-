@@ -89,9 +89,18 @@ export async function POST(request: NextRequest) {
         companyName: lead.company_name,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Token creation failed:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
+    let message = "Unknown error";
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (error && typeof error === "object" && "message" in error) {
+      message = String((error as { message: unknown }).message);
+    } else if (typeof error === "string") {
+      message = error;
+    } else {
+      message = JSON.stringify(error);
+    }
     return errorResponse(`Failed to create token: ${message}`, 500);
   }
 }

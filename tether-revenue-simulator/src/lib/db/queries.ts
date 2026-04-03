@@ -15,48 +15,38 @@ export async function upsertLead(params: {
 }) {
   const supabase = createServerClient();
 
-  const { data, error } = await supabase.rpc("upsert_lead", {
-    p_email: params.email,
-    p_company_name: params.companyName,
-    p_is_free_email: params.isFreeEmail,
-  });
+  // Check if lead already exists
+  const { data: existingLead } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("email", params.email)
+    .single();
 
-  // Fallback to manual upsert if RPC not set up yet
-  if (error?.code === "42883" || error?.code === "PGRST202") {
-    // function does not exist (42883 = PostgreSQL, PGRST202 = PostgREST)
-    const { data: existingLead } = await supabase
+  if (existingLead) {
+    // Update visit tracking
+    await supabase
       .from("leads")
-      .select("*")
-      .eq("email", params.email)
-      .single();
-
-    if (existingLead) {
-      await supabase
-        .from("leads")
-        .update({
-          last_visit_at: new Date().toISOString(),
-          total_visits: existingLead.total_visits + 1,
-        })
-        .eq("id", existingLead.id);
-      return existingLead;
-    }
-
-    const { data: newLead, error: insertError } = await supabase
-      .from("leads")
-      .insert({
-        email: params.email,
-        company_name: params.companyName,
-        is_free_email: params.isFreeEmail,
+      .update({
+        last_visit_at: new Date().toISOString(),
+        total_visits: existingLead.total_visits + 1,
       })
-      .select()
-      .single();
-
-    if (insertError) throw insertError;
-    return newLead;
+      .eq("id", existingLead.id);
+    return existingLead;
   }
 
-  if (error) throw error;
-  return data;
+  // Create new lead
+  const { data: newLead, error: insertError } = await supabase
+    .from("leads")
+    .insert({
+      email: params.email,
+      company_name: params.companyName,
+      is_free_email: params.isFreeEmail,
+    })
+    .select()
+    .single();
+
+  if (insertError) throw new Error(`Failed to create lead: ${insertError.message}`);
+  return newLead;
 }
 
 /**
