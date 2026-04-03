@@ -151,9 +151,12 @@ export function SimulatorClient({
   );
 
   // Calculate button — shows overlay animation, then saves
+  // Weighted random delay: 2-6 seconds, biased toward 3-4s
+  // Uses a beta-like distribution: average of two uniform randoms shifts the peak to center
   const handleCalculate = useCallback(async () => {
     setIsCalculating(true);
-    const delay = Math.random() * 2000 + 1000;
+    const r = (Math.random() + Math.random()) / 2; // peaks around 0.5
+    const delay = 2000 + r * 4000; // 2000-6000ms, most likely ~3500ms
     await new Promise((resolve) => setTimeout(resolve, delay));
     setIsCalculating(false);
     debouncedSave(inputs);
