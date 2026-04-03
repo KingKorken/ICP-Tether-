@@ -47,15 +47,15 @@ function getZoneLabel(geoJsonName: string): string {
   return meta?.label ?? geoJsonName;
 }
 
-// Style helpers
+// Style helpers — zone borders always visible to show bidding zone boundaries
 function getSelectedStyle(): L.PathOptions {
-  return { fillColor: "#1a3a2a", fillOpacity: 0.8, color: "#f3f5f4", weight: 1.5 };
+  return { fillColor: "#1a3a2a", fillOpacity: 0.7, color: "#ffffff", weight: 1.5 };
 }
 function getSupportedStyle(): L.PathOptions {
-  return { fillColor: "#3a7d5c", fillOpacity: 0.3, color: "#d4dbd7", weight: 0.5 };
+  return { fillColor: "#3a7d5c", fillOpacity: 0.25, color: "#ffffff", weight: 1 };
 }
 function getUnsupportedStyle(): L.PathOptions {
-  return { fillColor: "#e8ede9", fillOpacity: 0.5, color: "#d4dbd7", weight: 0.5 };
+  return { fillColor: "#e0e5e2", fillOpacity: 0.6, color: "#ffffff", weight: 1 };
 }
 
 export function BiddingZoneMap({ selectedCountry, onChange }: BiddingZoneMapProps) {

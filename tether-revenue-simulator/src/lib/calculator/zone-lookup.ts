@@ -2,14 +2,20 @@ import { ZONE_METADATA } from "./market-data";
 import type { BiddingZone } from "./types";
 
 /**
- * Parse a Google Maps URL to extract lat/lng coordinates.
+ * Parse a Google Maps URL or coordinates string to extract lat/lng.
  *
- * Supported patterns:
- * - https://www.google.com/maps/@59.33,18.07,12z
- * - https://www.google.com/maps/place/.../@59.33,18.07,12z
- * - https://maps.google.com/?q=59.33,18.07
- * - https://www.google.com/maps?q=59.33,18.07
+ * Handles many formats:
+ * - https://www.google.com/maps/@59.3293,18.0686,12z
+ * - https://www.google.com/maps/place/Stockholm/@59.3293,18.0686,12z
+ * - https://www.google.com/maps/place/59.3293,18.0686
+ * - https://maps.google.com/?q=59.3293,18.0686
+ * - https://www.google.com/maps?q=59.3293,18.0686
+ * - https://maps.google.com/maps?ll=59.3293,18.0686
+ * - https://www.google.com/maps/dir//59.3293,18.0686
+ * - https://maps.app.goo.gl/... (shortened — can't parse, show message)
+ * - https://goo.gl/maps/... (shortened — can't parse, show message)
  * - Raw coordinates: "59.33, 18.07"
+ * - Raw coordinates: "59.3293 18.0686" (space separated)
  */
 export function parseGoogleMapsUrl(
   input: string
@@ -17,34 +23,75 @@ export function parseGoogleMapsUrl(
   try {
     const trimmed = input.trim();
 
-    // Pattern 1: /@lat,lng in URL
-    const atMatch = trimmed.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    // Check for shortened URLs that we can't parse client-side
+    if (trimmed.includes("goo.gl/") || trimmed.includes("maps.app.goo.gl")) {
+      return null; // Caller should show a message about using the full URL
+    }
+
+    // Pattern: /@lat,lng anywhere in the URL
+    const atMatch = trimmed.match(/@(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
     if (atMatch) {
-      return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+      const lat = parseFloat(atMatch[1]);
+      const lng = parseFloat(atMatch[2]);
+      if (isValidCoord(lat, lng)) return { lat, lng };
     }
 
-    // Pattern 2: ?q=lat,lng or &q=lat,lng
-    const qMatch = trimmed.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    // Pattern: ?q=lat,lng or &q=lat,lng
+    const qMatch = trimmed.match(/[?&]q=(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
     if (qMatch) {
-      return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+      const lat = parseFloat(qMatch[1]);
+      const lng = parseFloat(qMatch[2]);
+      if (isValidCoord(lat, lng)) return { lat, lng };
     }
 
-    // Pattern 3: Raw coordinates "59.33, 18.07"
-    const rawMatch = trimmed.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
-    if (rawMatch) {
-      return { lat: parseFloat(rawMatch[1]), lng: parseFloat(rawMatch[2]) };
+    // Pattern: ?ll=lat,lng or &ll=lat,lng
+    const llMatch = trimmed.match(/[?&]ll=(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+    if (llMatch) {
+      const lat = parseFloat(llMatch[1]);
+      const lng = parseFloat(llMatch[2]);
+      if (isValidCoord(lat, lng)) return { lat, lng };
     }
 
-    // Pattern 4: place/ coordinates in path
-    const placeMatch = trimmed.match(/place\/[^/]*\/(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-    if (placeMatch) {
-      return { lat: parseFloat(placeMatch[1]), lng: parseFloat(placeMatch[2]) };
+    // Pattern: /dir//lat,lng or /place/lat,lng
+    const pathMatch = trimmed.match(/\/(dir|place)\/[^@]*?(-?\d+\.\d{2,}),\s*(-?\d+\.\d{2,})/);
+    if (pathMatch) {
+      const lat = parseFloat(pathMatch[2]);
+      const lng = parseFloat(pathMatch[3]);
+      if (isValidCoord(lat, lng)) return { lat, lng };
+    }
+
+    // Pattern: any two decimal numbers that look like coordinates in the URL
+    const genericMatch = trimmed.match(/(-?\d+\.\d{3,}),\s*(-?\d+\.\d{3,})/);
+    if (genericMatch) {
+      const lat = parseFloat(genericMatch[1]);
+      const lng = parseFloat(genericMatch[2]);
+      if (isValidCoord(lat, lng)) return { lat, lng };
+    }
+
+    // Raw coordinates with comma: "59.33, 18.07"
+    const commaMatch = trimmed.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+    if (commaMatch) {
+      const lat = parseFloat(commaMatch[1]);
+      const lng = parseFloat(commaMatch[2]);
+      if (isValidCoord(lat, lng)) return { lat, lng };
+    }
+
+    // Raw coordinates with space: "59.33 18.07"
+    const spaceMatch = trimmed.match(/^(-?\d+\.?\d*)\s+(-?\d+\.?\d*)$/);
+    if (spaceMatch) {
+      const lat = parseFloat(spaceMatch[1]);
+      const lng = parseFloat(spaceMatch[2]);
+      if (isValidCoord(lat, lng)) return { lat, lng };
     }
 
     return null;
   } catch {
     return null;
   }
+}
+
+function isValidCoord(lat: number, lng: number): boolean {
+  return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }
 
 /**

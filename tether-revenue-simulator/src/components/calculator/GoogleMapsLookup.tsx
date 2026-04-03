@@ -27,7 +27,12 @@ export function GoogleMapsLookup({ onChange }: GoogleMapsLookupProps) {
 
     const coords = parseGoogleMapsUrl(url);
     if (!coords) {
-      setError("Could not read coordinates. Please paste a Google Maps link or enter coordinates like \"59.33, 18.07\".");
+      // Check if it's a shortened URL
+      if (url.includes("goo.gl/") || url.includes("maps.app.goo.gl")) {
+        setError("Shortened links aren't supported. Please open the link in Google Maps first, then copy the full URL from your browser's address bar.");
+      } else {
+        setError("Could not read coordinates. Try pasting the full Google Maps URL from your browser, or enter coordinates like \"59.33, 18.07\".");
+      }
       return;
     }
 
