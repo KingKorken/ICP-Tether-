@@ -242,27 +242,51 @@ export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: 
           <label className="block text-sm font-medium text-brand-text mb-1.5">
             Charger Power
           </label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {[
-              { value: 0.0074, label: "7.4 kW" },
-              { value: 0.011, label: "11 kW" },
-              { value: 0.022, label: "22 kW" },
-            ].map((power) => (
-              <button
-                key={power.value}
-                onClick={() => onChange("powerMW", power.value)}
-                className={`
-                  px-2 py-2 rounded-md text-sm font-medium transition-colors
-                  ${
-                    state.powerMW === power.value
-                      ? "bg-brand-primary text-white"
-                      : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
-                  }
-                `}
-              >
-                {power.label}
-              </button>
-            ))}
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { value: 0.0074, label: "7.4 kW" },
+                { value: 0.011, label: "11 kW" },
+                { value: 0.022, label: "22 kW" },
+              ].map((power) => (
+                <button
+                  key={power.value}
+                  onClick={() => onChange("powerMW", power.value)}
+                  className={`
+                    px-2 py-2 rounded-md text-sm font-medium transition-colors
+                    ${
+                      state.powerMW === power.value
+                        ? "bg-brand-primary text-white"
+                        : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
+                    }
+                  `}
+                >
+                  {power.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { value: 0.05, label: "50 kW" },
+                { value: 0.15, label: "150 kW" },
+                { value: 0.35, label: "350 kW" },
+              ].map((power) => (
+                <button
+                  key={power.value}
+                  onClick={() => onChange("powerMW", power.value)}
+                  className={`
+                    px-2 py-2 rounded-md text-xs font-medium transition-colors
+                    ${
+                      state.powerMW === power.value
+                        ? "bg-brand-revenue text-white"
+                        : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
+                    }
+                  `}
+                >
+                  {power.label} DC
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -302,6 +326,9 @@ export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: 
         </div>
       </div>
 
+      {/* Advanced Settings */}
+      <AdvancedSettings state={state} onChange={onChange} />
+
       {/* Calculate Button */}
       {onCalculate && (
         <button
@@ -320,5 +347,97 @@ export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: 
         </button>
       )}
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Advanced Settings — collapsible section
+// ---------------------------------------------------------------------------
+
+function AdvancedSettings({
+  state,
+  onChange,
+}: {
+  state: SimulatorState;
+  onChange: (field: keyof SimulatorState, value: SimulatorState[keyof SimulatorState]) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleClass = (isActive: boolean) => `
+    px-3 py-2 rounded-md text-sm font-medium transition-colors
+    ${isActive
+      ? "bg-brand-primary text-white"
+      : "bg-brand-light text-brand-muted hover:bg-brand-subtle hover:text-brand-text"
+    }
+  `;
+
+  return (
+    <div className="border-t border-brand-border/50 pt-4 mt-1">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1.5 text-sm text-brand-muted hover:text-brand-primary transition-colors w-full"
+        type="button"
+      >
+        <span className="text-xs">{isOpen ? "\u25BE" : "\u25B8"}</span>
+        <span className="font-medium">Advanced Settings</span>
+      </button>
+
+      {isOpen && (
+        <div className="mt-4 space-y-4">
+          {/* Smart Charging */}
+          <div>
+            <label className="block text-sm font-medium text-brand-text mb-1.5">
+              Smart Charging Capable
+            </label>
+            <p className="text-xs text-brand-muted mb-2">
+              Does your charger support OCPP smart charging? Required for grid flexibility revenue.
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={() => onChange("smartCharging", true)}
+                className={toggleClass(state.smartCharging !== false)}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => onChange("smartCharging", false)}
+                className={toggleClass(state.smartCharging === false)}
+              >
+                No
+              </button>
+            </div>
+            {state.smartCharging === false && (
+              <p className="text-xs text-brand-warm mt-2">
+                Without smart charging, grid flexibility revenue is not available. Only e-credit revenue will be calculated.
+              </p>
+            )}
+          </div>
+
+          {/* Grid Connection */}
+          <div>
+            <label className="block text-sm font-medium text-brand-text mb-1.5">
+              Grid Connection
+            </label>
+            <p className="text-xs text-brand-muted mb-2">
+              Single-phase connections limit flexibility power to 7.4 kW per charger.
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={() => onChange("gridConnection", "three_phase")}
+                className={toggleClass(state.gridConnection !== "single_phase")}
+              >
+                Three Phase
+              </button>
+              <button
+                onClick={() => onChange("gridConnection", "single_phase")}
+                className={toggleClass(state.gridConnection === "single_phase")}
+              >
+                Single Phase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

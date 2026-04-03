@@ -32,6 +32,13 @@ export function calculateRevenue(
   const market = MARKET_DATA[state.country];
   const { chargers, powerMW, utilization: util, flexPotential: flex } = state;
   const totalMonths = state.horizonMonths;
+  const smartCharging = state.smartCharging ?? true;
+  const gridConnection = state.gridConnection ?? "three_phase";
+
+  // Grid connection cap: single-phase limits effective power to 7.4kW for flex
+  const flexPowerMW = gridConnection === "single_phase"
+    ? Math.min(powerMW, 0.0074)
+    : powerMW;
 
   // --- E-Credits Calculation ---
   const power_kW = powerMW * 1000;
@@ -58,23 +65,28 @@ export function calculateRevenue(
     // E-credits with seasonal adjustment
     monthlyEcredits.push(monthlyEcreditCPO * RES_SEASONAL[mi]);
 
-    // Grid Flexibility
-    const mwAvailable = chargers * util * powerMW * flex;
-    const accessRatio = profile.accessibleHoursDay / 24;
-    const accessibleHours = HOURS_PER_MONTH[mi] * accessRatio;
+    // Grid Flexibility (uses flexPowerMW which respects grid connection cap)
+    if (!smartCharging) {
+      // No smart charging = no flex revenue
+      monthlyFlex.push(0);
+    } else {
+      const mwAvailable = chargers * util * flexPowerMW * flex;
+      const accessRatio = profile.accessibleHoursDay / 24;
+      const accessibleHours = HOURS_PER_MONTH[mi] * accessRatio;
 
-    const mfrrUpRev =
-      mwAvailable * profile.mfrrUp * market.mfrr_up[mi] * accessibleHours;
-    const mfrrDownRev =
-      mwAvailable * profile.mfrrDown * market.mfrr_down[mi] * accessibleHours;
-    const fcrUpRev =
-      mwAvailable * profile.fcrUp * market.fcrd_up[mi] * accessibleHours;
-    const fcrDownRev =
-      mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours;
+      const mfrrUpRev =
+        mwAvailable * profile.mfrrUp * market.mfrr_up[mi] * accessibleHours;
+      const mfrrDownRev =
+        mwAvailable * profile.mfrrDown * market.mfrr_down[mi] * accessibleHours;
+      const fcrUpRev =
+        mwAvailable * profile.fcrUp * market.fcrd_up[mi] * accessibleHours;
+      const fcrDownRev =
+        mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours;
 
-    monthlyFlex.push(
-      (mfrrUpRev + mfrrDownRev + fcrUpRev + fcrDownRev) * CPO_SHARE
-    );
+      monthlyFlex.push(
+        (mfrrUpRev + mfrrDownRev + fcrUpRev + fcrDownRev) * CPO_SHARE
+      );
+    }
   }
 
   // --- Aggregate Values for Selected Horizon ---

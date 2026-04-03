@@ -54,8 +54,13 @@ export interface ZoneMetadata {
 export const CHARGER_TYPES = ["public", "residential"] as const;
 export type ChargerType = (typeof CHARGER_TYPES)[number];
 
-export const POWER_OPTIONS = [0.0074, 0.011, 0.022] as const;
+export const POWER_OPTIONS_AC = [0.0074, 0.011, 0.022] as const;
+export const POWER_OPTIONS_DC = [0.05, 0.15, 0.35] as const;
+export const POWER_OPTIONS = [...POWER_OPTIONS_AC, ...POWER_OPTIONS_DC] as const;
 export type PowerMW = (typeof POWER_OPTIONS)[number];
+
+export const GRID_CONNECTIONS = ["single_phase", "three_phase"] as const;
+export type GridConnection = (typeof GRID_CONNECTIONS)[number];
 
 /**
  * Zod schema for simulator state — used for API boundary validation.
@@ -65,12 +70,14 @@ export const SimulatorStateSchema = z.object({
   country: z.enum(COUNTRIES),
   type: z.enum(CHARGER_TYPES),
   chargers: z.number().int().min(10).max(10000),
-  powerMW: z.number().refine((v) => [0.0074, 0.011, 0.022].includes(v), {
+  powerMW: z.number().refine((v) => [0.0074, 0.011, 0.022, 0.05, 0.15, 0.35].includes(v), {
     message: "Invalid power value",
   }),
   utilization: z.number().min(0.05).max(0.40),
   flexPotential: z.number().min(0.20).max(0.80),
   horizonMonths: z.union([z.literal(3), z.literal(6), z.literal(12)]).default(12),
+  smartCharging: z.boolean().default(true),
+  gridConnection: z.enum(["single_phase", "three_phase"]).default("three_phase"),
 });
 
 export type SimulatorState = z.infer<typeof SimulatorStateSchema>;
@@ -122,6 +129,8 @@ export const DEFAULT_STATE: SimulatorState = {
   utilization: 0.15,
   flexPotential: 0.50,
   horizonMonths: 12,
+  smartCharging: true,
+  gridConnection: "three_phase",
 };
 
 // =============================================
