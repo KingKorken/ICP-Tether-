@@ -63,6 +63,22 @@ export const GRID_CONNECTIONS = ["single_phase", "three_phase"] as const;
 export type GridConnection = (typeof GRID_CONNECTIONS)[number];
 
 /**
+ * A single additional charger bank. Used when a site has a mix of charger
+ * types/power levels. Each bank contributes independently to revenue.
+ * The "primary" charger lives on the top-level SimulatorState fields.
+ */
+export const AdditionalChargerSchema = z.object({
+  id: z.string(),
+  type: z.enum(CHARGER_TYPES),
+  powerMW: z.number().refine((v) => [0.0074, 0.011, 0.022, 0.05, 0.15, 0.35].includes(v), {
+    message: "Invalid power value",
+  }),
+  chargers: z.number().int().min(1).max(10000),
+});
+
+export type AdditionalCharger = z.infer<typeof AdditionalChargerSchema>;
+
+/**
  * Zod schema for simulator state — used for API boundary validation.
  */
 export const SimulatorStateSchema = z.object({
@@ -78,6 +94,8 @@ export const SimulatorStateSchema = z.object({
   horizonMonths: z.union([z.literal(3), z.literal(6), z.literal(12)]).default(12),
   smartCharging: z.boolean().default(true),
   gridConnection: z.enum(["single_phase", "three_phase"]).default("three_phase"),
+  /** Additional charger banks — added via "Add another charger" button. */
+  additionalChargers: z.array(AdditionalChargerSchema).max(5).default([]),
 });
 
 export type SimulatorState = z.infer<typeof SimulatorStateSchema>;
@@ -131,6 +149,7 @@ export const DEFAULT_STATE: SimulatorState = {
   horizonMonths: 12,
   smartCharging: true,
   gridConnection: "three_phase",
+  additionalChargers: [],
 };
 
 // =============================================

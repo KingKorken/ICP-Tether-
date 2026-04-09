@@ -7,6 +7,11 @@
  * Two revenue streams:
  * 1. E-credits: Based on energy consumption × avoided CO2 × market factors
  * 2. Grid Flexibility: Based on available capacity × market prices (mFRR + FCR-D)
+ *
+ * Multi-charger support: The primary charger (top-level state fields) plus
+ * any number of additional charger banks (state.additionalChargers) are each
+ * calculated independently and summed. Utilization, flexPotential, horizon,
+ * smart charging, and grid connection are shared across all banks.
  */
 
 import { MARKET_DATA } from "./market-data";
@@ -18,32 +23,47 @@ import {
   CPO_SHARE,
   MONTH_LABELS,
 } from "./constants";
-import type { SimulatorState, CalculationResult } from "./types";
+import type {
+  SimulatorState,
+  CalculationResult,
+  ChargerType,
+} from "./types";
+
+interface BankRevenue {
+  monthlyEcredits: number[];
+  monthlyFlex: number[];
+}
 
 /**
- * Calculate revenue projections for the given simulator state.
- * This is the core calculation — must complete in <16ms for 60fps.
+ * Calculate revenue contribution from a single charger bank (primary or
+ * additional). Utilization / flex / grid / smart-charging / market / horizon
+ * are shared across all banks and passed in as context.
  */
-export function calculateRevenue(
-  state: SimulatorState,
-  startMonth: number = new Date().getMonth()
-): CalculationResult {
-  const profile = PROFILES[state.type];
-  const market = MARKET_DATA[state.country];
-  const { chargers, powerMW, utilization: util, flexPotential: flex } = state;
-  const totalMonths = state.horizonMonths;
-  const smartCharging = state.smartCharging ?? true;
-  const gridConnection = state.gridConnection ?? "three_phase";
+function calculateBank(
+  chargers: number,
+  powerMW: number,
+  type: ChargerType,
+  ctx: {
+    country: SimulatorState["country"];
+    util: number;
+    flex: number;
+    totalMonths: number;
+    startMonth: number;
+    smartCharging: boolean;
+    gridConnection: SimulatorState["gridConnection"];
+  }
+): BankRevenue {
+  const profile = PROFILES[type];
+  const market = MARKET_DATA[ctx.country];
 
   // Grid connection cap: single-phase limits effective power to 7.4kW for flex
-  const flexPowerMW = gridConnection === "single_phase"
-    ? Math.min(powerMW, 0.0074)
-    : powerMW;
+  const flexPowerMW =
+    ctx.gridConnection === "single_phase" ? Math.min(powerMW, 0.0074) : powerMW;
 
   // --- E-Credits Calculation ---
   const power_kW = powerMW * 1000;
   const annualKWh =
-    chargers * power_kW * util * profile.accessibleHoursDay * 365;
+    chargers * power_kW * ctx.util * profile.accessibleHoursDay * 365;
   const avoidedCO2_kg = ECREDIT.avoidedCO2_g / 1000;
   const effectiveRate =
     market.resE_pct *
@@ -59,25 +79,27 @@ export function calculateRevenue(
   const monthlyEcredits: number[] = [];
   const monthlyFlex: number[] = [];
 
-  for (let m = 0; m < totalMonths; m++) {
-    const mi = (startMonth + m) % 12; // Calendar month index
+  for (let m = 0; m < ctx.totalMonths; m++) {
+    const mi = (ctx.startMonth + m) % 12;
 
     // E-credits with seasonal adjustment
     monthlyEcredits.push(monthlyEcreditCPO * RES_SEASONAL[mi]);
 
-    // Grid Flexibility (uses flexPowerMW which respects grid connection cap)
-    if (!smartCharging) {
-      // No smart charging = no flex revenue
+    // Grid Flexibility
+    if (!ctx.smartCharging) {
       monthlyFlex.push(0);
     } else {
-      const mwAvailable = chargers * util * flexPowerMW * flex;
+      const mwAvailable = chargers * ctx.util * flexPowerMW * ctx.flex;
       const accessRatio = profile.accessibleHoursDay / 24;
       const accessibleHours = HOURS_PER_MONTH[mi] * accessRatio;
 
       const mfrrUpRev =
         mwAvailable * profile.mfrrUp * market.mfrr_up[mi] * accessibleHours;
       const mfrrDownRev =
-        mwAvailable * profile.mfrrDown * market.mfrr_down[mi] * accessibleHours;
+        mwAvailable *
+        profile.mfrrDown *
+        market.mfrr_down[mi] *
+        accessibleHours;
       const fcrUpRev =
         mwAvailable * profile.fcrUp * market.fcrd_up[mi] * accessibleHours;
       const fcrDownRev =
@@ -86,6 +108,50 @@ export function calculateRevenue(
       monthlyFlex.push(
         (mfrrUpRev + mfrrDownRev + fcrUpRev + fcrDownRev) * CPO_SHARE
       );
+    }
+  }
+
+  return { monthlyEcredits, monthlyFlex };
+}
+
+/**
+ * Calculate revenue projections for the given simulator state.
+ * This is the core calculation — must complete in <16ms for 60fps.
+ */
+export function calculateRevenue(
+  state: SimulatorState,
+  startMonth: number = new Date().getMonth()
+): CalculationResult {
+  const totalMonths = state.horizonMonths;
+  const smartCharging = state.smartCharging ?? true;
+  const gridConnection = state.gridConnection ?? "three_phase";
+  const additionalChargers = state.additionalChargers ?? [];
+
+  const ctx = {
+    country: state.country,
+    util: state.utilization,
+    flex: state.flexPotential,
+    totalMonths,
+    startMonth,
+    smartCharging,
+    gridConnection,
+  };
+
+  // All charger banks: primary + any additional banks added via the UI
+  const banks: BankRevenue[] = [
+    calculateBank(state.chargers, state.powerMW, state.type, ctx),
+    ...additionalChargers.map((ac) =>
+      calculateBank(ac.chargers, ac.powerMW, ac.type, ctx)
+    ),
+  ];
+
+  // Sum month-by-month across all banks
+  const monthlyEcredits: number[] = new Array(totalMonths).fill(0);
+  const monthlyFlex: number[] = new Array(totalMonths).fill(0);
+  for (const bank of banks) {
+    for (let m = 0; m < totalMonths; m++) {
+      monthlyEcredits[m] += bank.monthlyEcredits[m];
+      monthlyFlex[m] += bank.monthlyFlex[m];
     }
   }
 
@@ -118,11 +184,16 @@ export function calculateRevenue(
     });
   }
 
+  // Total charge points across all banks (for per-charger metric)
+  const totalChargers =
+    state.chargers +
+    additionalChargers.reduce((sum, ac) => sum + ac.chargers, 0);
+
   return {
     totalCPO,
     ecreditCPO: totalEcreditsCPO,
     flexCPO: totalFlex,
-    perCharger: chargers > 0 ? totalCPO / chargers : 0,
+    perCharger: totalChargers > 0 ? totalCPO / totalChargers : 0,
     monthly,
     cumulative,
     totalMonths,
