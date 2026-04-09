@@ -19,6 +19,8 @@ interface CalculatorFormProps {
   onChange: (field: keyof SimulatorState, value: SimulatorState[keyof SimulatorState]) => void;
   onCalculate?: () => void;
   isCalculating?: boolean;
+  /** True when live inputs differ from the last calculated snapshot. */
+  isStale?: boolean;
 }
 
 const MAX_ADDITIONAL_CHARGERS = 4; // 1 primary + 4 additional = 5 total
@@ -382,7 +384,7 @@ function ChargerBankEditor({
 // CalculatorForm
 // ---------------------------------------------------------------------------
 
-export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: CalculatorFormProps) {
+export function CalculatorForm({ state, onChange, onCalculate, isCalculating, isStale }: CalculatorFormProps) {
   // Sliders minus the "chargers" one — that's now handled inside each bank editor.
   const sharedSliders = SLIDER_CONFIGS.filter((c) => c.field !== "chargers");
 
@@ -522,20 +524,34 @@ export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: 
 
       {/* Calculate Button */}
       {onCalculate && (
-        <button
-          onClick={onCalculate}
-          disabled={isCalculating}
-          className={`
-            mt-6 w-full py-3 rounded-lg text-sm font-semibold transition-colors
-            ${
-              isCalculating
-                ? "bg-brand-subtle text-brand-muted cursor-not-allowed"
-                : "bg-brand-primary text-white hover:bg-brand-primary-light active:bg-brand-primary"
-            }
-          `}
-        >
-          {isCalculating ? "Calculating..." : "Calculate Revenue"}
-        </button>
+        <div className="mt-6">
+          {isStale && !isCalculating && (
+            <p className="mb-2 text-xs text-brand-muted flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-revenue animate-pulse" />
+              Inputs changed — click to update results
+            </p>
+          )}
+          <button
+            onClick={onCalculate}
+            disabled={isCalculating}
+            className={`
+              w-full py-3 rounded-lg text-sm font-semibold transition-colors
+              ${
+                isCalculating
+                  ? "bg-brand-subtle text-brand-muted cursor-not-allowed"
+                  : isStale
+                    ? "bg-brand-revenue text-white hover:brightness-110 shadow-sm shadow-brand-revenue/30"
+                    : "bg-brand-primary text-white hover:bg-brand-primary-light active:bg-brand-primary"
+              }
+            `}
+          >
+            {isCalculating
+              ? "Calculating..."
+              : isStale
+                ? "Update Results"
+                : "Calculate Revenue"}
+          </button>
+        </div>
       )}
     </Card>
   );

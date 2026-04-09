@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useDeferredValue, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { calculateRevenue } from "@/lib/calculator/engine";
 import { CalculatorForm } from "@/components/calculator/CalculatorForm";
 import { ResultsHero } from "@/components/calculator/ResultsHero";
@@ -28,7 +28,14 @@ export function SimulatorClient({
   initialState,
   hasExistingSnapshot,
 }: SimulatorClientProps) {
+  // Live inputs: what the form is currently showing (updates on every change)
   const [inputs, setInputs] = useState<SimulatorState>(initialState);
+  // Committed inputs: the snapshot that the results/charts are rendered from.
+  // Only updated when the user clicks "Calculate Revenue" so charts don't move
+  // while the user is editing values.
+  const [committedInputs, setCommittedInputs] =
+    useState<SimulatorState>(initialState);
+
   const [loadingState, setLoadingState] = useState<LoadingState>(
     hasExistingSnapshot ? "ready" : "ready"
   );
@@ -41,11 +48,18 @@ export function SimulatorClient({
   // Compute start month once at mount
   const [startMonth] = useState(() => new Date().getMonth());
 
-  // Use deferred value for smooth slider interaction
-  const deferredInputs = useDeferredValue(inputs);
+  // Results are derived strictly from committedInputs — live input changes
+  // do NOT trigger a recalc until the user clicks Calculate.
   const results = useMemo(
-    () => calculateRevenue(deferredInputs, startMonth),
-    [deferredInputs, startMonth]
+    () => calculateRevenue(committedInputs, startMonth),
+    [committedInputs, startMonth]
+  );
+
+  // Whether live inputs have drifted from the last calculated snapshot.
+  // Used to show a "results out of date" hint next to the Calculate button.
+  const isStale = useMemo(
+    () => JSON.stringify(inputs) !== JSON.stringify(committedInputs),
+    [inputs, committedInputs]
   );
 
   // Initialize session and event batcher
@@ -149,14 +163,17 @@ export function SimulatorClient({
     [tokenId]
   );
 
-  // Calculate button — shows overlay animation, then saves
-  // Weighted random delay: 2-6 seconds, biased toward 3-4s
-  // Uses a beta-like distribution: average of two uniform randoms shifts the peak to center
+  // Calculate button — shows overlay animation, commits inputs so the
+  // results/charts update, then saves.
+  // Weighted random delay: 2-6 seconds, biased toward 3-4s.
+  // Uses a beta-like distribution: average of two uniform randoms shifts the peak to center.
   const handleCalculate = useCallback(async () => {
     setIsCalculating(true);
     const r = (Math.random() + Math.random()) / 2; // peaks around 0.5
     const delay = 2000 + r * 4000; // 2000-6000ms, most likely ~3500ms
     await new Promise((resolve) => setTimeout(resolve, delay));
+    // Commit the current live inputs — this is when the charts update.
+    setCommittedInputs(inputs);
     setIsCalculating(false);
     debouncedSave(inputs);
   }, [inputs, debouncedSave]);
@@ -258,6 +275,7 @@ export function SimulatorClient({
               onChange={handleInputChange}
               onCalculate={handleCalculate}
               isCalculating={isCalculating}
+              isStale={isStale}
             />
           </div>
 
@@ -272,7 +290,11 @@ export function SimulatorClient({
                 </div>
               </div>
             )}
-            <ResultsHero results={results} companyName={inputs.company} horizonMonths={inputs.horizonMonths} />
+            <ResultsHero
+              results={results}
+              companyName={committedInputs.company}
+              horizonMonths={committedInputs.horizonMonths}
+            />
 
             <div className="mt-10 space-y-10">
               <SeasonalChart data={results.monthly} />
@@ -288,7 +310,7 @@ export function SimulatorClient({
               results.cumulative[results.cumulative.length - 1]?.cumulativeCombined ?? 0
             }
             totalMonths={results.totalMonths}
-            companyName={inputs.company}
+            companyName={committedInputs.company}
           />
         </div>
 
