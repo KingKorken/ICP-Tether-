@@ -349,7 +349,7 @@ function ChargerBankEditor({
             type="range"
             min={minChargers}
             max={maxChargers}
-            step={10}
+            step={1}
             value={value.chargers}
             onChange={(e) =>
               onUpdate({ chargers: parseInt(e.target.value, 10) })
@@ -449,7 +449,7 @@ export function CalculatorForm({ state, onChange, onCalculate, isCalculating }: 
               if (patch.chargers !== undefined)
                 onChange("chargers", patch.chargers);
             }}
-            minChargers={10}
+            minChargers={1}
             maxChargers={10000}
           />
 

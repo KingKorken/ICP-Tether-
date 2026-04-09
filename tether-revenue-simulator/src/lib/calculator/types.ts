@@ -85,7 +85,7 @@ export const SimulatorStateSchema = z.object({
   company: z.string().max(200).default(""),
   country: z.enum(COUNTRIES),
   type: z.enum(CHARGER_TYPES),
-  chargers: z.number().int().min(10).max(10000),
+  chargers: z.number().int().min(1).max(10000),
   powerMW: z.number().refine((v) => [0.0074, 0.011, 0.022, 0.05, 0.15, 0.35].includes(v), {
     message: "Invalid power value",
   }),
@@ -180,15 +180,15 @@ export const SLIDER_CONFIGS: SliderConfig[] = [
   {
     field: "chargers",
     label: "Number of Charge Points",
-    min: 10,
+    min: 1,
     max: 10000,
-    step: 10,
+    step: 1,
     format: (v) => v.toLocaleString("en-US"),
     toDisplay: (v) => v,
     fromDisplay: (d) => d,
-    displayMin: 10,
+    displayMin: 1,
     displayMax: 10000,
-    displayStep: 10,
+    displayStep: 1,
     formatInput: (v) => v.toLocaleString("en-US"),
   },
   {
