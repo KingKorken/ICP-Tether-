@@ -7,6 +7,7 @@ import { ResultsHero } from "@/components/calculator/ResultsHero";
 import { SeasonalChart } from "@/components/calculator/SeasonalChart";
 import { CumulativeTimeline } from "@/components/calculator/CumulativeTimeline";
 import { LossCounter } from "@/components/calculator/LossCounter";
+import { TetherLogo } from "@/components/shared/TetherLogo";
 import { startBatcher, stopBatcher, trackEvent } from "@/lib/tracking/tracker";
 import { EVENTS } from "@/lib/tracking/events";
 import type { SimulatorState } from "@/lib/calculator/types";
@@ -245,6 +246,7 @@ export function SimulatorClient({
       <header className="bg-brand-dark py-3 px-6 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
+            <TetherLogo size={28} className="text-[#2ee5a8]" />
             <span className="text-lg font-semibold text-white tracking-tight">Tether</span>
             <span className="text-brand-muted text-xs font-medium tracking-wide uppercase">Revenue Simulator</span>
           </div>
