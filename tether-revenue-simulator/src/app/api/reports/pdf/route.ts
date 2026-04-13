@@ -3,6 +3,7 @@ import { z } from "zod";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getActiveToken, getLatestSnapshot } from "@/lib/db/queries";
 import { calculateRevenue } from "@/lib/calculator/engine";
+import { getMarketData } from "@/lib/calculator/market-data";
 import { RevenueReport } from "@/components/pdf/RevenueReport";
 import { SimulatorStateSchema } from "@/lib/calculator/types";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -63,7 +64,8 @@ export async function POST(request: NextRequest) {
     }
 
     const state = stateResult.data;
-    const results = calculateRevenue(state);
+    const marketData = await getMarketData();
+    const results = calculateRevenue(state, undefined, marketData);
     const companyName =
       (snapshot.input_state as Record<string, unknown>)?.company as string ||
       (token.leads as { company_name?: string })?.company_name ||

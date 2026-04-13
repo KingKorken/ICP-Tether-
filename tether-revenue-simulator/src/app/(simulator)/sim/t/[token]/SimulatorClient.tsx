@@ -10,7 +10,8 @@ import { LossCounter } from "@/components/calculator/LossCounter";
 import { TetherLogo } from "@/components/shared/TetherLogo";
 import { startBatcher, stopBatcher, trackEvent } from "@/lib/tracking/tracker";
 import { EVENTS } from "@/lib/tracking/events";
-import type { SimulatorState } from "@/lib/calculator/types";
+import type { SimulatorState, Country } from "@/lib/calculator/types";
+import type { CountryMarketData } from "@/lib/calculator/market-data";
 
 interface SimulatorClientProps {
   accessToken: string;
@@ -18,6 +19,7 @@ interface SimulatorClientProps {
   leadId: string;
   initialState: SimulatorState;
   hasExistingSnapshot: boolean;
+  marketData?: Record<Country, CountryMarketData>;
 }
 
 type LoadingState = "loading" | "ready" | "error";
@@ -28,6 +30,7 @@ export function SimulatorClient({
   leadId,
   initialState,
   hasExistingSnapshot,
+  marketData,
 }: SimulatorClientProps) {
   // Live inputs: what the form is currently showing (updates on every change)
   const [inputs, setInputs] = useState<SimulatorState>(initialState);
@@ -52,8 +55,8 @@ export function SimulatorClient({
   // Results are derived strictly from committedInputs — live input changes
   // do NOT trigger a recalc until the user clicks Calculate.
   const results = useMemo(
-    () => calculateRevenue(committedInputs, startMonth),
-    [committedInputs, startMonth]
+    () => calculateRevenue(committedInputs, startMonth, marketData),
+    [committedInputs, startMonth, marketData]
   );
 
   // Whether live inputs have drifted from the last calculated snapshot.
@@ -123,7 +126,7 @@ export function SimulatorClient({
         setIsSaving(true);
 
         try {
-          const result = calculateRevenue(state);
+          const result = calculateRevenue(state, undefined, marketData);
 
           // Persist snapshot to database (session_id omitted — not tracked in sessions table)
           await fetch("/api/snapshots/save", {
@@ -161,7 +164,7 @@ export function SimulatorClient({
         }
       }, 2000);
     },
-    [tokenId]
+    [tokenId, marketData]
   );
 
   // Calculate button — shows overlay animation, commits inputs so the

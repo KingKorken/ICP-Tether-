@@ -4,6 +4,7 @@ import { isValidAccessToken } from "@/lib/tokens/validation";
 import { SimulatorClient } from "./SimulatorClient";
 import type { SimulatorState } from "@/lib/calculator/types";
 import { DEFAULT_STATE } from "@/lib/calculator/types";
+import { getMarketData } from "@/lib/calculator/market-data";
 
 export const metadata = {
   title: "Revenue Simulator — Tether",
@@ -52,6 +53,9 @@ export default async function SimulatorPage({ params }: SimulatorPageProps) {
   const companyName =
     initialState.company || (token.leads as { company_name?: string })?.company_name || "";
 
+  // Fetch live market prices (falls back to static data on error)
+  const marketData = await getMarketData();
+
   return (
     <SimulatorClient
       accessToken={accessToken}
@@ -59,6 +63,7 @@ export default async function SimulatorPage({ params }: SimulatorPageProps) {
       leadId={token.lead_id}
       initialState={{ ...initialState, company: companyName }}
       hasExistingSnapshot={!!snapshot}
+      marketData={marketData}
     />
   );
 }

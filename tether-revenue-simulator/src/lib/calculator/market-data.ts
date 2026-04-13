@@ -1,4 +1,6 @@
 import type { Country, BiddingZone, ZoneMetadata } from "./types";
+import { COUNTRIES } from "./types";
+import { getAllMarketPrices } from "@/lib/db/market-prices";
 
 /**
  * Market data per country.
@@ -150,3 +152,97 @@ export const ZONE_METADATA: ZoneMetadata[] = [
   { id: "MK", label: "North Macedonia", country: null, center: { lat: 41.5, lng: 21.7 } },
   { id: "AL", label: "Albania", country: null, center: { lat: 41.3, lng: 20.0 } },
 ];
+
+// =============================================
+// Live Market Data (DB-backed with fallback)
+// =============================================
+
+/** In-memory cache for live market data (per serverless instance) */
+let cachedData: Record<Country, CountryMarketData> | null = null;
+let cachedAt = 0;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Fetch live market data from Supabase, falling back to static MARKET_DATA.
+ *
+ * Returns the same CountryMarketData shape the engine expects.
+ * Server-side only — uses Supabase service role client.
+ *
+ * Caching: 1-hour TTL per serverless instance.
+ */
+export async function getMarketData(): Promise<Record<Country, CountryMarketData>> {
+  // Return cached data if fresh
+  if (cachedData && Date.now() - cachedAt < CACHE_TTL_MS) {
+    return cachedData;
+  }
+
+  try {
+    const rows = await getAllMarketPrices();
+
+    // If no rows in DB, fall back to static data
+    if (!rows || rows.length === 0) {
+      return MARKET_DATA;
+    }
+
+    const result = mergeWithStatic(rows);
+    cachedData = result;
+    cachedAt = Date.now();
+    return result;
+  } catch (error) {
+    console.error(
+      "[market-data] Failed to fetch live prices, using static fallback:",
+      error instanceof Error ? error.message : error
+    );
+    return MARKET_DATA;
+  }
+}
+
+/**
+ * Transform DB rows into Record<Country, CountryMarketData>.
+ * Merges with static MARKET_DATA for non-price fields (label, currency, resE_pct).
+ */
+function mergeWithStatic(
+  rows: Array<{
+    country: string;
+    product: string;
+    month_idx: number;
+    avg_price: number;
+  }>
+): Record<Country, CountryMarketData> {
+  // Start with a deep copy of static data
+  const result: Record<string, CountryMarketData> = {};
+  for (const country of COUNTRIES) {
+    const staticEntry = MARKET_DATA[country];
+    result[country] = {
+      label: staticEntry.label,
+      currency: staticEntry.currency,
+      resE_pct: staticEntry.resE_pct,
+      // Start with copies of static arrays as mutable number[]
+      mfrr_up: [...staticEntry.mfrr_up],
+      mfrr_down: [...staticEntry.mfrr_down],
+      fcrd_up: [...staticEntry.fcrd_up],
+      fcrd_down: [...staticEntry.fcrd_down],
+    };
+  }
+
+  // Overlay DB prices onto the copied arrays
+  for (const row of rows) {
+    const countryData = result[row.country];
+    if (!countryData) continue;
+
+    const monthIdx = row.month_idx;
+    if (monthIdx < 0 || monthIdx > 11) continue;
+
+    const product = row.product as keyof Pick<
+      CountryMarketData,
+      "mfrr_up" | "mfrr_down" | "fcrd_up" | "fcrd_down"
+    >;
+
+    const arr = countryData[product];
+    if (Array.isArray(arr)) {
+      (arr as number[])[monthIdx] = row.avg_price;
+    }
+  }
+
+  return result as Record<Country, CountryMarketData>;
+}

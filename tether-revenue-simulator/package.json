@@ -14,6 +14,7 @@
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",
     "@types/leaflet": "^1.9.21",
+    "fast-xml-parser": "^5.5.12",
     "iron-session": "^8.0.0",
     "leaflet": "^1.9.4",
     "next": "^15.1.0",

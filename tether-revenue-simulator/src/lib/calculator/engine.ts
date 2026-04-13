@@ -14,7 +14,7 @@
  * smart charging, and grid connection are shared across all banks.
  */
 
-import { MARKET_DATA } from "./market-data";
+import { MARKET_DATA, type CountryMarketData } from "./market-data";
 import {
   PROFILES,
   ECREDIT,
@@ -27,6 +27,7 @@ import type {
   SimulatorState,
   CalculationResult,
   ChargerType,
+  Country,
 } from "./types";
 
 interface BankRevenue {
@@ -51,10 +52,11 @@ function calculateBank(
     startMonth: number;
     smartCharging: boolean;
     gridConnection: SimulatorState["gridConnection"];
+    allMarkets: Record<Country, CountryMarketData>;
   }
 ): BankRevenue {
   const profile = PROFILES[type];
-  const market = MARKET_DATA[ctx.country];
+  const market = ctx.allMarkets[ctx.country];
 
   // Grid connection cap: single-phase limits effective power to 7.4kW for flex
   const flexPowerMW =
@@ -106,7 +108,7 @@ function calculateBank(
         mwAvailable * profile.fcrDown * market.fcrd_down[mi] * accessibleHours;
 
       monthlyFlex.push(
-        (mfrrUpRev + mfrrDownRev + fcrUpRev + fcrDownRev) * CPO_SHARE
+        Math.max(0, (mfrrUpRev + mfrrDownRev + fcrUpRev + fcrDownRev) * CPO_SHARE)
       );
     }
   }
@@ -120,12 +122,14 @@ function calculateBank(
  */
 export function calculateRevenue(
   state: SimulatorState,
-  startMonth: number = new Date().getMonth()
+  startMonth: number = new Date().getMonth(),
+  marketData?: Record<Country, CountryMarketData>
 ): CalculationResult {
   const totalMonths = state.horizonMonths;
   const smartCharging = state.smartCharging ?? true;
   const gridConnection = state.gridConnection ?? "three_phase";
   const additionalChargers = state.additionalChargers ?? [];
+  const allMarkets = marketData ?? MARKET_DATA;
 
   const ctx = {
     country: state.country,
@@ -135,6 +139,7 @@ export function calculateRevenue(
     startMonth,
     smartCharging,
     gridConnection,
+    allMarkets,
   };
 
   // All charger banks: primary + any additional banks added via the UI
